@@ -158,7 +158,7 @@
             flex: 0 0 auto;
             min-width: 4em;
             margin: 0;
-            padding: 16px 12px 16px 8px;
+            padding: 6px 12px 6px 8px;
             overflow: hidden;
             color: #9a9a9a;
             background: #f4f4f4;
@@ -198,7 +198,7 @@
             inset: 0;
             z-index: 1;
             margin: 0;
-            padding: 16px 18px;
+            padding: 6px 18px;
             overflow: hidden;
             color: #212529;
             background: transparent;
@@ -225,7 +225,7 @@
             width: 100%;
             min-width: 0;
             height: 100%;
-            padding: 16px 18px;
+            padding: 6px 18px;
             border: 0;
             resize: none;
             outline: none;
@@ -325,6 +325,9 @@
         <button id="flowchart-btn" class="tool-icon-button" type="button" aria-label="フローチャートを別画面で表示" title="フローチャートを別画面で表示">
             <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="2" width="8" height="5" rx="1"/><path d="M12 7v3m0 0-5 3m5-3 5 3"/><rect x="3" y="13" width="8" height="5" rx="1"/><path d="M7 18v3h10v-3"/><rect x="13" y="13" width="8" height="5" rx="1"/></svg>
         </button>
+        <button id="variable-diagram-btn" class="tool-icon-button" type="button" aria-label="変数図を表示" title="変数図を表示">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="4" width="7" height="5" rx="1"/><rect x="15" y="3" width="7" height="4" rx="1"/><rect x="15" y="10" width="7" height="4" rx="1"/><rect x="15" y="17" width="7" height="4" rx="1"/><path d="M9 6.5h3v12h3M12 12h3"/></svg>
+        </button>
     </div>
     <div class="editor-container">
         <div class="editor-shell">
@@ -377,6 +380,7 @@
             const shareButton = document.getElementById('share-btn');
             const qrButton = document.getElementById('qr-btn');
             const flowchartButton = document.getElementById('flowchart-btn');
+            const variableDiagramButton = document.getElementById('variable-diagram-btn');
             const qrDialog = document.getElementById('qr-dialog');
             const qrCode = document.getElementById('qr-code');
             const qrMessage = document.getElementById('qr-message');
@@ -543,6 +547,57 @@
             document.addEventListener('keydown', (event) => {
                 if (event.key === 'Escape' && qrDialog.classList.contains('is-open')) closeQrDialog();
             });
+
+            window.showVariableDiagram = (jsonText) => {
+                const data = JSON.parse(jsonText);
+                if (!data.variables.length) {
+                    window.alert('表示できる変数がありません。');
+                    return;
+                }
+
+                const rowHeight = 48;
+                const top = 58;
+                const listX = 44;
+                const listWidth = 372;
+                const nameWidth = 304;
+                const arrayX = 710;
+                const cellWidth = 112;
+                const arrays = data.arrays.map((array) => ({ ...array, values: array.values.slice(0, 20) }));
+                const maxColumns = Math.max(1, ...arrays.map((array) => array.values.length));
+                const width = Math.max(1180, arrayX + maxColumns * cellWidth + 70);
+                const height = Math.max(top + data.variables.length * rowHeight + 55, top + arrays.length * 148 + 55);
+                const arrayPositions = new Map(arrays.map((array, index) => [array.id, top + index * 148]));
+
+                const variableRows = data.variables.map((variable, index) => {
+                    const y = top + index * rowHeight;
+                    const value = variable.type === 'scalar' ? escapeHtml(variable.value) : '';
+                    const dot = variable.type === 'array'
+                        ? `<circle cx="${listX + listWidth}" cy="${y + rowHeight / 2}" r="5"/>`
+                        : '';
+                    return `<g><rect class="variable-cell" x="${listX}" y="${y}" width="${nameWidth}" height="${rowHeight}"/><rect class="variable-cell" x="${listX + nameWidth}" y="${y}" width="${listWidth - nameWidth}" height="${rowHeight}"/><text class="variable-name" x="${listX + nameWidth / 2}" y="${y + rowHeight / 2}">${escapeHtml(variable.name)}</text><text x="${listX + nameWidth + (listWidth - nameWidth) / 2}" y="${y + rowHeight / 2}">${value}</text>${dot}</g>`;
+                }).join('');
+
+                const arrows = data.variables.filter((variable) => variable.type === 'array').map((variable) => {
+                    const sourceIndex = data.variables.indexOf(variable);
+                    const sourceY = top + sourceIndex * rowHeight + rowHeight / 2;
+                    const targetY = arrayPositions.get(variable.arrayId) + 50;
+                    return `<path class="reference" d="M ${listX + listWidth + 5} ${sourceY} C 500 ${sourceY}, 570 ${targetY}, ${arrayX} ${targetY}"/>`;
+                }).join('');
+
+                const arrayTables = arrays.map((array) => {
+                    const y = arrayPositions.get(array.id);
+                    const indices = array.values.map((_, index) => `<g><rect class="index-cell" x="${arrayX + index * cellWidth}" y="${y + 28}" width="${cellWidth}" height="34"/><text class="index" x="${arrayX + index * cellWidth + cellWidth / 2}" y="${y + 45}">${index}</text></g>`).join('');
+                    const values = array.values.map((value, index) => `<g><rect class="array-cell" x="${arrayX + index * cellWidth}" y="${y + 62}" width="${cellWidth}" height="48"/><text x="${arrayX + index * cellWidth + cellWidth / 2}" y="${y + 86}">${escapeHtml(value)}</text></g>`).join('');
+                    return `<g><text class="array-label" x="${arrayX}" y="${y + 17}">配列</text>${indices}${values}</g>`;
+                }).join('');
+
+                const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" role="img" aria-label="変数と配列の対応図"><style>text{font:28px Monaco,Menlo,Consolas,'Noto Sans JP',monospace;fill:#111;text-anchor:middle;dominant-baseline:middle}.variable-cell{fill:#e5eef8;stroke:#999}.variable-name{font-size:27px}.index-cell,.array-cell{fill:#fffec9;stroke:#999}.index{font-size:20px;fill:#777}.array-label{font:26px 'Noto Sans JP',Meiryo,sans-serif;fill:#777;text-anchor:start}.reference{fill:none;stroke:#268cf2;stroke-width:3;marker-end:url(#variable-arrow)}circle{fill:#111}</style><defs><marker id="variable-arrow" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#268cf2"/></marker></defs><text x="${listX}" y="28" style="font:30px 'Noto Sans JP',Meiryo,sans-serif;text-anchor:start">変数リスト</text>${arrows}${variableRows}${arrayTables}</svg>`;
+                const page = `<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>変数図</title><style>body{margin:0;padding:18px;background:#f5f6f8;color:#333;font-family:'Noto Sans JP',Meiryo,sans-serif}header{position:sticky;top:0;z-index:2;display:flex;align-items:center;padding:10px 16px;background:#fff;border:1px solid #ddd;border-radius:8px}h1{margin:0;font-size:18px}button{margin-left:auto;padding:7px 14px;border:1px solid #bbb;border-radius:5px;background:#fff;cursor:pointer}.canvas{margin-top:14px;overflow:auto;background:#fff;border:1px solid #ddd;border-radius:8px}svg{display:block}@media print{body{padding:0;background:#fff}header{display:none}.canvas{margin:0;border:0}}</style></head><body><header><h1>変数と配列の対応図</h1><button onclick="window.print()">印刷</button></header><div class="canvas">${svg}</div></body></html>`;
+                const pageUrl = URL.createObjectURL(new Blob([page], { type: 'text/html;charset=utf-8' }));
+                const diagramWindow = window.open(pageUrl, '_blank');
+                if (!diagramWindow) window.alert('別画面を開けませんでした。ポップアップを許可してください。');
+                window.setTimeout(() => URL.revokeObjectURL(pageUrl), 60000);
+            };
 
             const createFlowchartSvg = (code) => {
                 const sourceLines = code.split('\n')
@@ -749,11 +804,12 @@
     </script>
 
     <script type="text/python">
-        from browser import document
+        from browser import document, window
         import sys
         import io
         import traceback
         import re
+        import json
 
         def transpile_to_python(code):
             """共通テスト仕様のプログラムをPythonコードに変換"""
@@ -822,24 +878,67 @@
             
             return "\n".join(python_lines)
 
-        def run_code(event):
+        def collect_variables(namespace):
+            variables = []
+            arrays = []
+            array_ids = {}
+
+            for name, value in namespace.items():
+                if name.startswith("__") or name in ("random", "math"):
+                    continue
+
+                if isinstance(value, (list, tuple)):
+                    object_id = id(value)
+                    if object_id not in array_ids:
+                        array_id = f"array-{len(arrays)}"
+                        array_ids[object_id] = array_id
+                        arrays.append({
+                            "id": array_id,
+                            "values": [repr(item) for item in value]
+                        })
+                    variables.append({
+                        "name": name,
+                        "type": "array",
+                        "arrayId": array_ids[object_id]
+                    })
+                elif value is None or isinstance(value, (str, int, float, bool)):
+                    variables.append({
+                        "name": name,
+                        "type": "scalar",
+                        "value": repr(value)
+                    })
+
+            return {"variables": variables, "arrays": arrays}
+
+        def execute_code(show_diagram=False):
             document["output-area"].text = ""
             sys.stdout = io.StringIO()
             sys.stderr = io.StringIO()
-            
             raw_code = document["code-editor"].value
-            
+            namespace = {}
+
             try:
                 python_code = transpile_to_python(raw_code)
                 # print("【内部で変換されたPythonコード】\n" + python_code) # デバッグ用
-                exec(python_code)
+                exec(python_code, namespace)
             except Exception as e:
                 print("【エラーが発生しました】")
                 print(traceback.format_exc())
-            
+
             document["output-area"].text = sys.stdout.getvalue() + sys.stderr.getvalue()
 
+            if show_diagram:
+                diagram_data = collect_variables(namespace)
+                window.showVariableDiagram(json.dumps(diagram_data, ensure_ascii=False))
+
+        def run_code(event):
+            execute_code()
+
+        def show_variable_diagram(event):
+            execute_code(show_diagram=True)
+
         document["run-btn"].bind("click", run_code)
+        document["variable-diagram-btn"].bind("click", show_variable_diagram)
     </script>
 </body>
 </html>
