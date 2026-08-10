@@ -242,11 +242,11 @@
         textarea::selection { color: transparent; background: rgba(66, 139, 202, .28); }
         .code-pane:focus-within { background: #fff; }
         .viewer-panel {
-            display: flex;
+            display: grid;
+            grid-template-rows: 38px minmax(80px, 32%) 38px minmax(0, 1fr);
             flex: 1 1 50%;
             min-width: 0;
             min-height: 0;
-            flex-direction: column;
             overflow: hidden;
             background: #fff;
             border: 1.5px solid var(--border);
@@ -254,8 +254,11 @@
         }
         .panel-header {
             display: flex;
+            flex: 0 0 38px;
             align-items: center;
             height: 38px;
+            min-height: 38px;
+            box-sizing: border-box;
             padding: 0 16px;
             border-top: 0;
             border-bottom: 1px solid var(--border);
@@ -289,7 +292,7 @@
             display: block;
             padding: 14px 18px;
             color: #6c757d;
-            content: 'プログラムを実行すると，変数リストが表示されます';
+            content: 'プログラムを実行すると，表示されます';
         }
         .diagram-message { padding: 14px 18px; color: #6c757d; }
         .variable-diagram-container svg { display: block; }
@@ -564,10 +567,6 @@
 
             window.showVariableDiagram = (jsonText) => {
                 const data = JSON.parse(jsonText);
-                if (!data.variables.length) {
-                    variableDiagram.innerHTML = '<div class="diagram-message">表示できる変数がありません。</div>';
-                    return;
-                }
 
                 const rowHeight = 34;
                 const top = 38;
@@ -606,7 +605,36 @@
                 }).join('');
 
                 const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" role="img" aria-label="変数と配列の対応図"><style>text{font:15px Monaco,Menlo,Consolas,'Noto Sans JP',monospace;fill:#111;text-anchor:middle;dominant-baseline:middle}.variable-cell{fill:#e5eef8;stroke:#999}.variable-name{font-size:15px}.index-cell,.array-cell{fill:#fffec9;stroke:#999}.index{font-size:12px;fill:#777}.array-label{font:14px 'Noto Sans JP',Meiryo,sans-serif;fill:#777;text-anchor:start}.reference{fill:none;stroke:#268cf2;stroke-width:2;marker-end:url(#variable-arrow)}circle{fill:#111}</style><defs><marker id="variable-arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#268cf2"/></marker></defs><text x="${listX}" y="18" style="font:17px 'Noto Sans JP',Meiryo,sans-serif;text-anchor:start">変数リスト</text>${arrows}${variableRows}${arrayTables}</svg>`;
-                variableDiagram.innerHTML = svg;
+                const executionRows = data.execution ?? [];
+                const chartX = 245;
+                const chartTop = 62;
+                const chartRowHeight = 25;
+                const maxTotal = Math.max(1, ...executionRows.map((row) => row.count + row.trueCount + row.falseCount));
+                const chartWidth = Math.max(430, maxTotal * 20);
+                const chartSvgWidth = chartX + chartWidth + 35;
+                const chartSvgHeight = chartTop + executionRows.length * chartRowHeight + 58;
+                const scale = chartWidth / maxTotal;
+                const grid = Array.from({ length: maxTotal + 1 }, (_, value) => {
+                    const x = chartX + value * scale;
+                    const labelY = chartTop + executionRows.length * chartRowHeight + 6;
+                    return `<path class="grid" d="M${x} ${chartTop - 8}V${labelY - 6}"/><text class="axis" x="${x}" y="${labelY}" transform="rotate(45 ${x} ${labelY})">${value}</text>`;
+                }).join('');
+                const rowGrid = Array.from({ length: executionRows.length + 1 }, (_, index) => {
+                    const y = chartTop - 4 + index * chartRowHeight;
+                    return `<path class="grid" d="M${chartX} ${y}H${chartX + chartWidth}"/>`;
+                }).join('');
+                const bars = executionRows.map((row, index) => {
+                    const y = chartTop + index * chartRowHeight;
+                    const trueWidth = row.trueCount * scale;
+                    const falseWidth = row.falseCount * scale;
+                    const countWidth = row.count * scale;
+                    const label = row.label.length > 25 ? `${row.label.slice(0, 24)}…` : row.label;
+                    return `<g><text class="chart-label" x="${chartX - 10}" y="${y + 8}">${escapeHtml(label)}</text><rect class="true-bar" x="${chartX}" y="${y}" width="${trueWidth}" height="16"/><rect class="false-bar" x="${chartX + trueWidth}" y="${y}" width="${falseWidth}" height="16"/><rect class="count-bar" x="${chartX + trueWidth + falseWidth}" y="${y}" width="${countWidth}" height="16"/></g>`;
+                }).join('');
+                const executionSvg = executionRows.length
+                    ? `<svg class="execution-chart" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${chartSvgWidth} ${chartSvgHeight}" width="${chartSvgWidth}" height="${chartSvgHeight}" role="img" aria-label="プログラム各行の実行回数"><style>.chart-title{font:17px 'Noto Sans JP',Meiryo,sans-serif;text-anchor:start;dominant-baseline:middle}.legend-label,.chart-label,.axis{font:12px 'Noto Sans JP',Meiryo,sans-serif;fill:#666;dominant-baseline:middle}.legend-label{text-anchor:start}.chart-label{text-anchor:end}.axis{text-anchor:start}.grid{stroke:#ddd;stroke-width:1}.true-bar{fill:#ffb545}.false-bar{fill:#a54c97}.count-bar{fill:#a4cf5a}</style><text class="chart-title" x="20" y="19">実行回数</text><g transform="translate(225 13)"><rect class="true-bar" width="34" height="14"/><text class="legend-label" x="44" y="7">真の回数</text><rect class="false-bar" x="112" width="34" height="14"/><text class="legend-label" x="156" y="7">偽の回数</text><rect class="count-bar" x="224" width="34" height="14"/><text class="legend-label" x="268" y="7">実行回数</text></g>${grid}${rowGrid}${bars}</svg>`
+                    : '';
+                variableDiagram.innerHTML = svg + executionSvg;
                 variableDiagram.scrollTo({ top: 0, left: 0 });
             };
 
@@ -828,7 +856,7 @@
             # 乱数や数学関数を使用可能にするため、標準モジュールを事前にインポート
             python_lines = ["import random", "import math"]
             
-            for line in lines:
+            for line_number, line in enumerate(lines, start=1):
                 indent = len(line) - len(line.lstrip())
                 l = line.strip()
                 
@@ -871,25 +899,67 @@
                 m_for = re.match(r'^(.+)\s*を\s*(.+)\s*から\s*(.+)\s*まで\s*(.+)\s*ずつ増やしながら繰り返す:$', l)
                 if m_for:
                     var, start, end, step = m_for.groups()
-                    l = f"for {var} in range({start}, ({end}) + 1, {step}):"
+                    l = f"for {var} in __track_iter({line_number}, range({start}, ({end}) + 1, {step})):"
                 
                 # 繰り返しの変換（減少）
                 m_for_dec = re.match(r'^(.+)\s*を\s*(.+)\s*から\s*(.+)\s*まで\s*(.+)\s*ずつ減らしながら繰り返す:$', l)
                 if m_for_dec:
                     var, start, end, step = m_for_dec.groups()
-                    l = f"for {var} in range({start}, ({end}) - 1, -({step})):"
+                    l = f"for {var} in __track_iter({line_number}, range({start}, ({end}) - 1, -({step}))):"
 
                 # 繰り返しの変換（条件ループ）
                 m_while = re.match(r'^(.+)\s*の間繰り返す:$', l)
                 if m_while:
                     cond = m_while.group(1)
-                    l = f"while {cond}:"
-                
-                python_lines.append(" " * indent + l)
+                    l = f"while __track_condition({line_number}, {cond}):"
+
+                if l.startswith("if ") and l.endswith(":"):
+                    condition = l[3:-1]
+                    l = f"if __track_condition({line_number}, {condition}):"
+                    python_lines.append(" " * indent + l)
+                elif l.startswith("elif ") and l.endswith(":"):
+                    condition = l[5:-1]
+                    l = f"elif __track_condition({line_number}, {condition}):"
+                    python_lines.append(" " * indent + l)
+                elif l.startswith("while ") and l.endswith(":") and "__track_condition" not in l:
+                    condition = l[6:-1]
+                    l = f"while __track_condition({line_number}, {condition}):"
+                    python_lines.append(" " * indent + l)
+                elif l.startswith(("for ", "while ")) or l == "else:":
+                    python_lines.append(" " * indent + l)
+                else:
+                    python_lines.append(" " * indent + f"__track_line({line_number})")
+                    python_lines.append(" " * indent + l)
             
             return "\n".join(python_lines)
 
-        def collect_variables(namespace):
+        def create_execution_stats(code):
+            stats = {}
+            for line_number, source in enumerate(code.split('\n'), start=1):
+                text = source.strip()
+                if not text or text.startswith(("#", "//")) or text == "そうでなければ:":
+                    continue
+                if text.startswith(("もし ", "そうでなくもし ")):
+                    label = f"条件分岐文（{line_number}行目）"
+                elif "ずつ増やしながら繰り返す:" in text or "ずつ減らしながら繰り返す:" in text:
+                    label = f"順次繰り返し文（{line_number}行目）"
+                elif text.endswith("の間繰り返す:"):
+                    label = f"条件繰り返し文（{line_number}行目）"
+                elif text.startswith("表示する("):
+                    label = f"表示するの呼出（{line_number}行目）"
+                elif "←" in text or re.match(r'^[^=!<>]+\s*=\s*[^=]', text):
+                    label = f"代入（{line_number}行目）"
+                else:
+                    label = f"実行（{line_number}行目）"
+                stats[line_number] = {
+                    "label": label,
+                    "count": 0,
+                    "trueCount": 0,
+                    "falseCount": 0
+                }
+            return stats
+
+        def collect_variables(namespace, execution_stats):
             variables = []
             arrays = []
             array_ids = {}
@@ -919,14 +989,41 @@
                         "value": repr(value)
                     })
 
-            return {"variables": variables, "arrays": arrays}
+            return {
+                "variables": variables,
+                "arrays": arrays,
+                "execution": list(execution_stats.values())
+            }
 
         def execute_code(show_diagram=False):
             document["output-area"].text = ""
             sys.stdout = io.StringIO()
             sys.stderr = io.StringIO()
             raw_code = document["code-editor"].value
-            namespace = {}
+            execution_stats = create_execution_stats(raw_code)
+
+            def track_line(line_number):
+                if line_number in execution_stats:
+                    execution_stats[line_number]["count"] += 1
+
+            def track_condition(line_number, value):
+                result = bool(value)
+                if line_number in execution_stats:
+                    execution_stats[line_number]["count"] += 1
+                    key = "trueCount" if result else "falseCount"
+                    execution_stats[line_number][key] += 1
+                return result
+
+            def track_iter(line_number, iterable):
+                for item in iterable:
+                    track_line(line_number)
+                    yield item
+
+            namespace = {
+                "__track_line": track_line,
+                "__track_condition": track_condition,
+                "__track_iter": track_iter
+            }
 
             try:
                 python_code = transpile_to_python(raw_code)
@@ -939,7 +1036,7 @@
             document["output-area"].text = sys.stdout.getvalue() + sys.stderr.getvalue()
 
             if show_diagram:
-                diagram_data = collect_variables(namespace)
+                diagram_data = collect_variables(namespace, execution_stats)
                 window.showVariableDiagram(json.dumps(diagram_data, ensure_ascii=False))
 
         def run_code(event):
