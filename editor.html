@@ -296,6 +296,28 @@
         }
         .diagram-message { padding: 14px 18px; color: #6c757d; }
         .variable-diagram-container svg { display: block; }
+        .execution-tooltip {
+            position: fixed;
+            z-index: 2000;
+            display: none;
+            min-width: 190px;
+            padding: 10px 12px;
+            color: #333;
+            background: rgba(255, 255, 255, .98);
+            border: 1px solid #bbb;
+            border-radius: 7px;
+            box-shadow: 0 4px 14px rgba(0, 0, 0, .18);
+            pointer-events: none;
+            font-size: 13px;
+        }
+        .execution-tooltip.is-visible { display: block; }
+        .execution-tooltip-title { margin-bottom: 7px; font-weight: 700; }
+        .execution-tooltip-row { display: grid; grid-template-columns: 12px 1fr auto; align-items: center; gap: 7px; padding: 2px 0; }
+        .execution-tooltip-row b { font-variant-numeric: tabular-nums; }
+        .execution-tooltip-swatch { width: 12px; height: 12px; border-radius: 2px; }
+        .execution-tooltip-swatch.is-true { background: #ffb545; }
+        .execution-tooltip-swatch.is-false { background: #a54c97; }
+        .execution-tooltip-swatch.is-count { background: #a4cf5a; }
         .statusbar {
             display: flex;
             align-items: center;
@@ -371,6 +393,8 @@
     </footer>
     </div>
 
+    <div id="execution-tooltip" class="execution-tooltip" role="tooltip" aria-hidden="true"></div>
+
     <div id="qr-dialog" class="qr-dialog" role="dialog" aria-modal="true" aria-labelledby="qr-title" aria-hidden="true">
         <div class="qr-card">
             <button id="qr-close" class="qr-close" type="button" aria-label="閉じる">×</button>
@@ -389,6 +413,7 @@
             const codeHighlight = document.getElementById('code-highlight');
             const cursorPosition = document.getElementById('cursor-position');
             const variableDiagram = document.getElementById('variable-diagram');
+            const executionTooltip = document.getElementById('execution-tooltip');
             const editorContainer = document.querySelector('.editor-container');
             const editorShell = document.querySelector('.editor-shell');
             const paneResizer = document.getElementById('pane-resizer');
@@ -629,14 +654,43 @@
                     const falseWidth = row.falseCount * scale;
                     const countWidth = row.count * scale;
                     const label = row.label.length > 25 ? `${row.label.slice(0, 24)}…` : row.label;
-                    return `<g><text class="chart-label" x="${chartX - 10}" y="${y + 8}">${escapeHtml(label)}</text><rect class="true-bar" x="${chartX}" y="${y}" width="${trueWidth}" height="16"/><rect class="false-bar" x="${chartX + trueWidth}" y="${y}" width="${falseWidth}" height="16"/><rect class="count-bar" x="${chartX + trueWidth + falseWidth}" y="${y}" width="${countWidth}" height="16"/></g>`;
+                    const safeRowLabel = escapeHtml(row.label);
+                    const dataAttributes = `data-label="${safeRowLabel}" data-true-count="${row.trueCount}" data-false-count="${row.falseCount}" data-count="${row.count}"`;
+                    return `<g><text class="chart-label" x="${chartX - 10}" y="${y + 8}">${escapeHtml(label)}</text><rect class="true-bar data-bar" ${dataAttributes} x="${chartX}" y="${y}" width="${trueWidth}" height="16"/><rect class="false-bar data-bar" ${dataAttributes} x="${chartX + trueWidth}" y="${y}" width="${falseWidth}" height="16"/><rect class="count-bar data-bar" ${dataAttributes} x="${chartX + trueWidth + falseWidth}" y="${y}" width="${countWidth}" height="16"/></g>`;
                 }).join('');
                 const executionSvg = executionRows.length
-                    ? `<svg class="execution-chart" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${chartSvgWidth} ${chartSvgHeight}" width="${chartSvgWidth}" height="${chartSvgHeight}" role="img" aria-label="プログラム各行の実行回数"><style>.chart-title{font:17px 'Noto Sans JP',Meiryo,sans-serif;text-anchor:start;dominant-baseline:middle}.legend-label,.chart-label,.axis{font:12px 'Noto Sans JP',Meiryo,sans-serif;fill:#666;dominant-baseline:middle}.legend-label{text-anchor:start}.chart-label{text-anchor:end}.axis{text-anchor:start}.grid{stroke:#ddd;stroke-width:1}.true-bar{fill:#ffb545}.false-bar{fill:#a54c97}.count-bar{fill:#a4cf5a}</style><text class="chart-title" x="20" y="19">実行回数</text><g transform="translate(225 13)"><rect class="true-bar" width="34" height="14"/><text class="legend-label" x="44" y="7">真の回数</text><rect class="false-bar" x="112" width="34" height="14"/><text class="legend-label" x="156" y="7">偽の回数</text><rect class="count-bar" x="224" width="34" height="14"/><text class="legend-label" x="268" y="7">実行回数</text></g>${grid}${rowGrid}${bars}</svg>`
+                    ? `<svg class="execution-chart" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${chartSvgWidth} ${chartSvgHeight}" width="${chartSvgWidth}" height="${chartSvgHeight}" role="img" aria-label="プログラム各行の実行回数"><style>.chart-title{font:17px 'Noto Sans JP',Meiryo,sans-serif;text-anchor:start;dominant-baseline:middle}.legend-label,.chart-label,.axis{font:12px 'Noto Sans JP',Meiryo,sans-serif;fill:#666;dominant-baseline:middle}.legend-label{text-anchor:start}.chart-label{text-anchor:end}.axis{text-anchor:start}.grid{stroke:#ddd;stroke-width:1}.true-bar{fill:#ffb545}.false-bar{fill:#a54c97}.count-bar{fill:#a4cf5a}.data-bar{cursor:default}.data-bar:hover{filter:brightness(.9);stroke:#555;stroke-width:1}</style><text class="chart-title" x="20" y="19">実行回数</text><g transform="translate(225 13)"><rect class="true-bar" width="34" height="14"/><text class="legend-label" x="44" y="7">真の回数</text><rect class="false-bar" x="112" width="34" height="14"/><text class="legend-label" x="156" y="7">偽の回数</text><rect class="count-bar" x="224" width="34" height="14"/><text class="legend-label" x="268" y="7">実行回数</text></g>${grid}${rowGrid}${bars}</svg>`
                     : '';
                 variableDiagram.innerHTML = svg + executionSvg;
                 variableDiagram.scrollTo({ top: 0, left: 0 });
             };
+
+            const positionExecutionTooltip = (event) => {
+                const gap = 14;
+                const maxLeft = window.innerWidth - executionTooltip.offsetWidth - 10;
+                const maxTop = window.innerHeight - executionTooltip.offsetHeight - 10;
+                executionTooltip.style.left = `${Math.max(10, Math.min(event.clientX + gap, maxLeft))}px`;
+                executionTooltip.style.top = `${Math.max(10, Math.min(event.clientY + gap, maxTop))}px`;
+            };
+
+            variableDiagram.addEventListener('pointermove', (event) => {
+                const bar = event.target.closest?.('.data-bar');
+                if (!bar) {
+                    executionTooltip.classList.remove('is-visible');
+                    executionTooltip.setAttribute('aria-hidden', 'true');
+                    return;
+                }
+
+                executionTooltip.innerHTML = `<div class="execution-tooltip-title">${escapeHtml(bar.dataset.label)}</div><div class="execution-tooltip-row"><span class="execution-tooltip-swatch is-true"></span><span>真の回数</span><b>${bar.dataset.trueCount}回</b></div><div class="execution-tooltip-row"><span class="execution-tooltip-swatch is-false"></span><span>偽の回数</span><b>${bar.dataset.falseCount}回</b></div><div class="execution-tooltip-row"><span class="execution-tooltip-swatch is-count"></span><span>実行回数</span><b>${bar.dataset.count}回</b></div>`;
+                executionTooltip.classList.add('is-visible');
+                executionTooltip.setAttribute('aria-hidden', 'false');
+                positionExecutionTooltip(event);
+            });
+
+            variableDiagram.addEventListener('pointerleave', () => {
+                executionTooltip.classList.remove('is-visible');
+                executionTooltip.setAttribute('aria-hidden', 'true');
+            });
 
             const createFlowchartSvg = (code) => {
                 const sourceLines = code.split('\n')
