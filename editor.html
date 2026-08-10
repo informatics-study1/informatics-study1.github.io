@@ -216,9 +216,30 @@
         .token-comment { color: #8e908c; }
         .token-operator { color: #3e999f; }
         .indent-guide {
+            --guide-color: #79c0ff;
+            position: relative;
             display: inline-block;
-            border-left: 1px solid #c7c7c7;
+            height: 1.2em;
+            border-left: 1px solid var(--guide-color);
             box-sizing: border-box;
+            vertical-align: top;
+        }
+        .indent-guide.is-end { border-left-color: transparent; }
+        .indent-guide.is-end::before,
+        .indent-guide.is-end::after {
+            position: absolute;
+            left: -1px;
+            content: '';
+        }
+        .indent-guide.is-end::before {
+            top: 0;
+            height: 72%;
+            border-left: 1px solid var(--guide-color);
+        }
+        .indent-guide.is-end::after {
+            top: 72%;
+            width: 48%;
+            border-top: 1px solid var(--guide-color);
         }
         textarea {
             position: relative;
@@ -813,12 +834,30 @@
             };
 
             const updateHighlight = () => {
-                const html = editor.value.split('\n').map((line) => {
+                const guideColors = ['#65b7e8'];
+                const lines = editor.value.split('\n').map((line) => {
                     const indentation = line.match(/^(?: {4}|\t)+/)?.[0] ?? '';
-                    const guides = indentation.replace(/ {4}|\t/g, (space) =>
-                        `<span class="indent-guide">${space === '\t' ? '    ' : space}</span>`
-                    );
-                    return guides + highlightSyntax(line.slice(indentation.length));
+                    return {
+                        line,
+                        indentation,
+                        depth: indentation.match(/ {4}|\t/g)?.length ?? 0,
+                        hasCode: line.trim().length > 0
+                    };
+                });
+                const nextDepths = Array(lines.length).fill(null);
+                let nextCodeDepth = null;
+                for (let index = lines.length - 1; index >= 0; index -= 1) {
+                    nextDepths[index] = nextCodeDepth;
+                    if (lines[index].hasCode) nextCodeDepth = lines[index].depth;
+                }
+                const html = lines.map((info, lineIndex) => {
+                    const guides = Array.from({ length: info.depth }, (_, guideIndex) => {
+                        const depth = guideIndex + 1;
+                        const isEnd = info.hasCode && (nextDepths[lineIndex] === null || nextDepths[lineIndex] < depth);
+                        const color = guideColors[guideIndex % guideColors.length];
+                        return `<span class="indent-guide${isEnd ? ' is-end' : ''}" style="--guide-color:${color}">    </span>`;
+                    }).join('');
+                    return guides + highlightSyntax(info.line.slice(info.indentation.length));
                 }).join('\n');
                 codeHighlight.innerHTML = html + (editor.value.endsWith('\n') ? ' ' : '');
             };
