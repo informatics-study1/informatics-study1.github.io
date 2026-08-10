@@ -93,6 +93,7 @@
             color: #444;
         }
         .tool-icon-button svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+        #qr-btn svg { width: 22px; height: 22px; }
         .tool-icon-button.is-success { color: #198754; box-shadow: 0 0 0 2px rgba(25,135,84,.25), 0 0 2px 1px rgba(0,0,0,.25); }
         .qr-dialog {
             position: fixed;
@@ -267,8 +268,8 @@
         .panel-header::before { content: '>_'; margin-right: 9px; color: var(--green); }
         .panel-hint { margin-left: auto; color: var(--muted); font-weight: 400; letter-spacing: 0; }
         .output-container {
-            flex: 1;
-            min-height: 115px;
+            flex: 0 0 32%;
+            min-height: 80px;
             padding: 14px 18px;
             overflow-y: auto;
             color: #212529;
@@ -278,6 +279,20 @@
             white-space: pre-wrap;
         }
         .output-container:empty::before { content: '実行待ち'; color: #6c757d; }
+        .variable-diagram-container {
+            flex: 1 1 auto;
+            min-height: 0;
+            overflow: auto;
+            background: #fff;
+        }
+        .variable-diagram-container:empty::before {
+            display: block;
+            padding: 14px 18px;
+            color: #6c757d;
+            content: '変数図を実行すると、ここに表示されます';
+        }
+        .diagram-message { padding: 14px 18px; color: #6c757d; }
+        .variable-diagram-container svg { display: block; }
         .statusbar {
             display: flex;
             align-items: center;
@@ -320,10 +335,10 @@
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.1.1l2-2a5 5 0 0 0-7.1-7.1l-1.1 1.1"/><path d="M14 11a5 5 0 0 0-7.1-.1l-2 2A5 5 0 0 0 12 20l1.1-1.1"/></svg>
         </button>
         <button id="qr-btn" class="tool-icon-button" type="button" aria-label="共有QRコードを表示" title="共有QRコードを表示">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3z"/><path d="M15 14h2v2h-2zm4 0h2v4h-2zm-4 4h4v3h-4zm6 2v1"/></svg>
+            <svg viewBox="0 0 22 22" aria-hidden="true"><defs><g id="qr-finder"><rect width="5" height="5" rx="1"/><rect x="2" y="2" width="1" height="1" fill="currentColor" stroke="none"/></g></defs><path d="M7 2H3a1 1 0 0 0-1 1v4M15 2h4a1 1 0 0 1 1 1v4M7 20H3a1 1 0 0 1-1-1v-4M15 20h4a1 1 0 0 0 1-1v-4"/><use href="#qr-finder" x="5" y="5"/><use href="#qr-finder" x="12" y="5"/><use href="#qr-finder" x="5" y="12"/><rect x="12" y="12" width="5" height="5" rx="1" fill="currentColor" stroke="none"/></svg>
         </button>
         <button id="flowchart-btn" class="tool-icon-button" type="button" aria-label="フローチャートを別画面で表示" title="フローチャートを別画面で表示">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="2" width="8" height="5" rx="1"/><path d="M12 7v3m0 0-5 3m5-3 5 3"/><rect x="3" y="13" width="8" height="5" rx="1"/><path d="M7 18v3h10v-3"/><rect x="13" y="13" width="8" height="5" rx="1"/></svg>
+            <svg viewBox="0 0 24 24" aria-hidden="true" stroke-width="2.4"><rect x="8" y="1.5" width="8" height="7" rx="2"/><path d="M12 8.5v4M5.5 15v-2.5h13V15"/><rect x="1.5" y="15" width="8" height="7.5" rx="2"/><rect x="14.5" y="15" width="8" height="7.5" rx="2"/></svg>
         </button>
         <button id="variable-diagram-btn" class="tool-icon-button" type="button" aria-label="変数図を表示" title="変数図を表示">
             <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="4" width="7" height="5" rx="1"/><rect x="15" y="3" width="7" height="4" rx="1"/><rect x="15" y="10" width="7" height="4" rx="1"/><rect x="15" y="17" width="7" height="4" rx="1"/><path d="M9 6.5h3v12h3M12 12h3"/></svg>
@@ -342,6 +357,8 @@
         <section class="viewer-panel" aria-label="実行結果ビューア">
         <div class="panel-header">OUTPUT <span class="panel-hint">実行結果</span></div>
         <div id="output-area" class="output-container"></div>
+        <div class="panel-header">VARIABLES <span class="panel-hint">変数と配列の対応図</span></div>
+        <div id="variable-diagram" class="variable-diagram-container"></div>
         </section>
     </div>
     <footer class="statusbar">
@@ -371,6 +388,7 @@
             const currentLineHighlight = document.getElementById('current-line-highlight');
             const codeHighlight = document.getElementById('code-highlight');
             const cursorPosition = document.getElementById('cursor-position');
+            const variableDiagram = document.getElementById('variable-diagram');
             const editorContainer = document.querySelector('.editor-container');
             const editorShell = document.querySelector('.editor-shell');
             const paneResizer = document.getElementById('pane-resizer');
@@ -551,28 +569,28 @@
             window.showVariableDiagram = (jsonText) => {
                 const data = JSON.parse(jsonText);
                 if (!data.variables.length) {
-                    window.alert('表示できる変数がありません。');
+                    variableDiagram.innerHTML = '<div class="diagram-message">表示できる変数がありません。</div>';
                     return;
                 }
 
-                const rowHeight = 48;
-                const top = 58;
-                const listX = 44;
-                const listWidth = 372;
-                const nameWidth = 304;
-                const arrayX = 710;
-                const cellWidth = 112;
+                const rowHeight = 34;
+                const top = 38;
+                const listX = 20;
+                const listWidth = 220;
+                const nameWidth = 160;
+                const arrayX = 380;
+                const cellWidth = 74;
                 const arrays = data.arrays.map((array) => ({ ...array, values: array.values.slice(0, 20) }));
                 const maxColumns = Math.max(1, ...arrays.map((array) => array.values.length));
-                const width = Math.max(1180, arrayX + maxColumns * cellWidth + 70);
-                const height = Math.max(top + data.variables.length * rowHeight + 55, top + arrays.length * 148 + 55);
-                const arrayPositions = new Map(arrays.map((array, index) => [array.id, top + index * 148]));
+                const width = Math.max(620, arrayX + maxColumns * cellWidth + 25);
+                const height = Math.max(top + data.variables.length * rowHeight + 25, top + arrays.length * 96 + 25);
+                const arrayPositions = new Map(arrays.map((array, index) => [array.id, top + index * 96]));
 
                 const variableRows = data.variables.map((variable, index) => {
                     const y = top + index * rowHeight;
                     const value = variable.type === 'scalar' ? escapeHtml(variable.value) : '';
                     const dot = variable.type === 'array'
-                        ? `<circle cx="${listX + listWidth}" cy="${y + rowHeight / 2}" r="5"/>`
+                        ? `<circle cx="${listX + listWidth}" cy="${y + rowHeight / 2}" r="3.5"/>`
                         : '';
                     return `<g><rect class="variable-cell" x="${listX}" y="${y}" width="${nameWidth}" height="${rowHeight}"/><rect class="variable-cell" x="${listX + nameWidth}" y="${y}" width="${listWidth - nameWidth}" height="${rowHeight}"/><text class="variable-name" x="${listX + nameWidth / 2}" y="${y + rowHeight / 2}">${escapeHtml(variable.name)}</text><text x="${listX + nameWidth + (listWidth - nameWidth) / 2}" y="${y + rowHeight / 2}">${value}</text>${dot}</g>`;
                 }).join('');
@@ -580,23 +598,20 @@
                 const arrows = data.variables.filter((variable) => variable.type === 'array').map((variable) => {
                     const sourceIndex = data.variables.indexOf(variable);
                     const sourceY = top + sourceIndex * rowHeight + rowHeight / 2;
-                    const targetY = arrayPositions.get(variable.arrayId) + 50;
-                    return `<path class="reference" d="M ${listX + listWidth + 5} ${sourceY} C 500 ${sourceY}, 570 ${targetY}, ${arrayX} ${targetY}"/>`;
+                    const targetY = arrayPositions.get(variable.arrayId) + 37;
+                    return `<path class="reference" d="M ${listX + listWidth + 4} ${sourceY} C ${listX + listWidth + 55} ${sourceY}, ${arrayX - 65} ${targetY}, ${arrayX} ${targetY}"/>`;
                 }).join('');
 
                 const arrayTables = arrays.map((array) => {
                     const y = arrayPositions.get(array.id);
-                    const indices = array.values.map((_, index) => `<g><rect class="index-cell" x="${arrayX + index * cellWidth}" y="${y + 28}" width="${cellWidth}" height="34"/><text class="index" x="${arrayX + index * cellWidth + cellWidth / 2}" y="${y + 45}">${index}</text></g>`).join('');
-                    const values = array.values.map((value, index) => `<g><rect class="array-cell" x="${arrayX + index * cellWidth}" y="${y + 62}" width="${cellWidth}" height="48"/><text x="${arrayX + index * cellWidth + cellWidth / 2}" y="${y + 86}">${escapeHtml(value)}</text></g>`).join('');
-                    return `<g><text class="array-label" x="${arrayX}" y="${y + 17}">配列</text>${indices}${values}</g>`;
+                    const indices = array.values.map((_, index) => `<g><rect class="index-cell" x="${arrayX + index * cellWidth}" y="${y + 20}" width="${cellWidth}" height="24"/><text class="index" x="${arrayX + index * cellWidth + cellWidth / 2}" y="${y + 32}">${index}</text></g>`).join('');
+                    const values = array.values.map((value, index) => `<g><rect class="array-cell" x="${arrayX + index * cellWidth}" y="${y + 44}" width="${cellWidth}" height="34"/><text x="${arrayX + index * cellWidth + cellWidth / 2}" y="${y + 61}">${escapeHtml(value)}</text></g>`).join('');
+                    return `<g><text class="array-label" x="${arrayX}" y="${y + 11}">配列</text>${indices}${values}</g>`;
                 }).join('');
 
-                const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" role="img" aria-label="変数と配列の対応図"><style>text{font:28px Monaco,Menlo,Consolas,'Noto Sans JP',monospace;fill:#111;text-anchor:middle;dominant-baseline:middle}.variable-cell{fill:#e5eef8;stroke:#999}.variable-name{font-size:27px}.index-cell,.array-cell{fill:#fffec9;stroke:#999}.index{font-size:20px;fill:#777}.array-label{font:26px 'Noto Sans JP',Meiryo,sans-serif;fill:#777;text-anchor:start}.reference{fill:none;stroke:#268cf2;stroke-width:3;marker-end:url(#variable-arrow)}circle{fill:#111}</style><defs><marker id="variable-arrow" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#268cf2"/></marker></defs><text x="${listX}" y="28" style="font:30px 'Noto Sans JP',Meiryo,sans-serif;text-anchor:start">変数リスト</text>${arrows}${variableRows}${arrayTables}</svg>`;
-                const page = `<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>変数図</title><style>body{margin:0;padding:18px;background:#f5f6f8;color:#333;font-family:'Noto Sans JP',Meiryo,sans-serif}header{position:sticky;top:0;z-index:2;display:flex;align-items:center;padding:10px 16px;background:#fff;border:1px solid #ddd;border-radius:8px}h1{margin:0;font-size:18px}button{margin-left:auto;padding:7px 14px;border:1px solid #bbb;border-radius:5px;background:#fff;cursor:pointer}.canvas{margin-top:14px;overflow:auto;background:#fff;border:1px solid #ddd;border-radius:8px}svg{display:block}@media print{body{padding:0;background:#fff}header{display:none}.canvas{margin:0;border:0}}</style></head><body><header><h1>変数と配列の対応図</h1><button onclick="window.print()">印刷</button></header><div class="canvas">${svg}</div></body></html>`;
-                const pageUrl = URL.createObjectURL(new Blob([page], { type: 'text/html;charset=utf-8' }));
-                const diagramWindow = window.open(pageUrl, '_blank');
-                if (!diagramWindow) window.alert('別画面を開けませんでした。ポップアップを許可してください。');
-                window.setTimeout(() => URL.revokeObjectURL(pageUrl), 60000);
+                const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" role="img" aria-label="変数と配列の対応図"><style>text{font:15px Monaco,Menlo,Consolas,'Noto Sans JP',monospace;fill:#111;text-anchor:middle;dominant-baseline:middle}.variable-cell{fill:#e5eef8;stroke:#999}.variable-name{font-size:15px}.index-cell,.array-cell{fill:#fffec9;stroke:#999}.index{font-size:12px;fill:#777}.array-label{font:14px 'Noto Sans JP',Meiryo,sans-serif;fill:#777;text-anchor:start}.reference{fill:none;stroke:#268cf2;stroke-width:2;marker-end:url(#variable-arrow)}circle{fill:#111}</style><defs><marker id="variable-arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#268cf2"/></marker></defs><text x="${listX}" y="18" style="font:17px 'Noto Sans JP',Meiryo,sans-serif;text-anchor:start">変数リスト</text>${arrows}${variableRows}${arrayTables}</svg>`;
+                variableDiagram.innerHTML = svg;
+                variableDiagram.scrollTo({ top: 0, left: 0 });
             };
 
             const createFlowchartSvg = (code) => {
@@ -932,7 +947,7 @@
                 window.showVariableDiagram(json.dumps(diagram_data, ensure_ascii=False))
 
         def run_code(event):
-            execute_code()
+            execute_code(show_diagram=True)
 
         def show_variable_diagram(event):
             execute_code(show_diagram=True)
