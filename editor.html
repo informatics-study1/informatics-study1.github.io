@@ -291,6 +291,10 @@
     </header>
     <div class="toolbar">
         <button id="run-btn" type="button">実行 ▶</button>
+        <button id="open-btn" class="tool-icon-button" type="button" aria-label="コードを開く" title="コードを開く">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 10V6.5A2.5 2.5 0 0 1 5 4h4.2a2 2 0 0 1 1.6.8L12.5 7H19a2.5 2.5 0 0 1 2.5 2.5V10"/><path d="M4.5 9.5h15a2 2 0 0 1 2 2v5A3.5 3.5 0 0 1 18 20H6a3.5 3.5 0 0 1-3.5-3.5v-5a2 2 0 0 1 2-2Z"/></svg>
+        </button>
+        <input id="open-file-input" type="file" accept=".txt,.py,text/plain" hidden>
         <button id="save-btn" class="tool-icon-button" type="button" aria-label="テキストファイルとして保存" title="テキストファイルとして保存">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4"/><path d="M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/></svg>
         </button>
@@ -347,6 +351,8 @@
             const editorContainer = document.querySelector('.editor-container');
             const editorShell = document.querySelector('.editor-shell');
             const paneResizer = document.getElementById('pane-resizer');
+            const openButton = document.getElementById('open-btn');
+            const openFileInput = document.getElementById('open-file-input');
             const saveButton = document.getElementById('save-btn');
             const shareButton = document.getElementById('share-btn');
             const qrButton = document.getElementById('qr-btn');
@@ -368,6 +374,26 @@
                     button.title = originalTitle;
                 }, 1500);
             };
+
+            openButton.addEventListener('click', () => {
+                openFileInput.value = '';
+                openFileInput.click();
+            });
+
+            openFileInput.addEventListener('change', async () => {
+                const [file] = openFileInput.files;
+                if (!file) return;
+
+                try {
+                    editor.value = await file.text();
+                    editor.dispatchEvent(new Event('input'));
+                    editor.focus();
+                    showButtonSuccess(openButton, '開きました');
+                } catch (error) {
+                    console.error('コードを読み込めませんでした。', error);
+                    alert('コードを読み込めませんでした。');
+                }
+            });
 
             saveButton.addEventListener('click', () => {
                 const file = new Blob([editor.value], { type: 'text/plain;charset=utf-8' });
