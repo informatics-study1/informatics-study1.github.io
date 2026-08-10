@@ -69,6 +69,15 @@
             scrollbar-width: none;
         }
         .toolbar::-webkit-scrollbar { display: none; }
+        .app-version {
+            flex: 0 0 auto;
+            margin-left: auto;
+            padding: 0 10px;
+            color: #777;
+            font: 12px/1 var(--mono);
+            letter-spacing: .04em;
+            user-select: none;
+        }
         button {
             padding: .55em 1.15em;
             border: 0;
@@ -81,8 +90,12 @@
             transition: background .15s, transform .15s;
         }
         button:hover { background: linear-gradient(#fff, #f0f0f0); color: #222; }
-        #run-btn { color: #fff; background: #a42; box-shadow: 0 0 2px 1px rgba(0,0,0,.32); }
-        #run-btn:hover { background: #80331a; color: #fff; }
+        #run-btn { color: #fff; background: #bd4d27; }
+        #run-btn:hover { background: #a64020; color: #fff; }
+        #step-btn, #auto-step-btn { color: #34404c; background: #fff; }
+        #step-btn:hover, #auto-step-btn:hover { color: #25313d; background: #f5f5f5; }
+        #auto-step-btn.is-running { color: #fff; background: #b3261e; }
+        #auto-step-btn.is-running:hover { color: #fff; background: #8f1f19; }
         .tool-icon-button {
             display: inline-flex;
             align-items: center;
@@ -170,6 +183,7 @@
             user-select: none;
         }
         .line-number {
+            position: relative;
             display: block;
             margin-right: -12px;
             margin-left: -8px;
@@ -177,6 +191,18 @@
             padding-left: 8px;
         }
         .line-number.is-active { background: #dedede; color: #555; }
+        .line-number.is-step::before {
+            position: absolute;
+            top: 0;
+            left: 2px;
+            color: #e00000;
+            content: '▶';
+            font-size: 1em;
+            font-weight: 900;
+            line-height: inherit;
+            text-shadow: -1px 0 #fff, 1px 0 #fff, 0 -1px #fff, 0 1px #fff;
+            transform: scaleX(1.1);
+        }
         .code-pane {
             position: relative;
             flex: 1;
@@ -351,6 +377,9 @@
             font-size: 12px;
         }
         .status-right { margin-left: auto; display: flex; gap: 18px; }
+        .step-counter-status { min-width: 0; overflow: hidden; color: #555; font-variant-numeric: tabular-nums; text-overflow: ellipsis; white-space: nowrap; }
+        .step-counter-status:empty { display: none; }
+        .step-counter-status.is-active { color: #b33d20; font-weight: 700; }
         @media (max-width: 700px) {
             .app-title, .shortcut { display: none; }
             body { min-width: 320px; overflow: auto; }
@@ -370,6 +399,8 @@
     </header>
     <div class="toolbar">
         <button id="run-btn" type="button">実行 ▶</button>
+        <button id="step-btn" type="button" title="プログラムを1行ずつ実行">ステップ実行 ▷</button>
+        <button id="auto-step-btn" type="button" title="ステップ実行を自動再生">自動再生 ▶</button>
         <button id="open-btn" class="tool-icon-button" type="button" aria-label="コードを開く" title="コードを開く">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 10V6.5A2.5 2.5 0 0 1 5 4h4.2a2 2 0 0 1 1.6.8L12.5 7H19a2.5 2.5 0 0 1 2.5 2.5V10"/><path d="M4.5 9.5h15a2 2 0 0 1 2 2v5A3.5 3.5 0 0 1 18 20H6a3.5 3.5 0 0 1-3.5-3.5v-5a2 2 0 0 1 2-2Z"/></svg>
         </button>
@@ -386,6 +417,7 @@
         <button id="flowchart-btn" class="tool-icon-button" type="button" aria-label="フローチャートを別画面で表示" title="フローチャートを別画面で表示">
             <svg viewBox="0 0 24 24" aria-hidden="true" stroke-width="2.4"><rect x="8" y="1.5" width="8" height="7" rx="2"/><path d="M12 8.5v4M5.5 15v-2.5h13V15"/><rect x="1.5" y="15" width="8" height="7.5" rx="2"/><rect x="14.5" y="15" width="8" height="7.5" rx="2"/></svg>
         </button>
+        <span class="app-version" aria-label="LastUpDate">LastUpDate: 2026/08/10</span>
     </div>
     <div class="editor-container">
         <div class="editor-shell">
@@ -405,7 +437,7 @@
         </section>
     </div>
     <footer class="statusbar">
-        <span>● Ready</span>
+        <span id="step-counter-status" class="step-counter-status"></span>
         <div class="status-right">
             <span id="cursor-position">行 1、列 1</span>
             <span>Spaces: 4</span>
@@ -429,6 +461,9 @@
     <script>
         (async () => {
             const editor = document.getElementById('code-editor');
+            const stepButton = document.getElementById('step-btn');
+            const autoStepButton = document.getElementById('auto-step-btn');
+            const stepCounterStatus = document.getElementById('step-counter-status');
             const lineNumbers = document.getElementById('line-numbers');
             const currentLineHighlight = document.getElementById('current-line-highlight');
             const codeHighlight = document.getElementById('code-highlight');
@@ -461,6 +496,38 @@
                     button.title = originalTitle;
                 }, 1500);
             };
+
+            let autoStepTimer = null;
+            let isAutoStepRunning = false;
+
+            const stopAutoStep = () => {
+                isAutoStepRunning = false;
+                if (autoStepTimer !== null) {
+                    window.clearTimeout(autoStepTimer);
+                    autoStepTimer = null;
+                }
+                autoStepButton.textContent = '自動再生 ▶';
+                autoStepButton.classList.remove('is-running');
+            };
+
+            const runAutoStep = () => {
+                if (!isAutoStepRunning) return;
+                stepButton.click();
+                if (isAutoStepRunning) {
+                    autoStepTimer = window.setTimeout(runAutoStep, 700);
+                }
+            };
+
+            autoStepButton.addEventListener('click', () => {
+                if (isAutoStepRunning) {
+                    stopAutoStep();
+                    return;
+                }
+                isAutoStepRunning = true;
+                autoStepButton.textContent = '停止 ■';
+                autoStepButton.classList.add('is-running');
+                runAutoStep();
+            });
 
             openButton.addEventListener('click', () => {
                 openFileInput.value = '';
@@ -873,6 +940,10 @@
             editor.addEventListener('input', () => {
                 updateLineNumbers();
                 updateHighlight();
+                stepButton.textContent = 'ステップ実行 ▷';
+                stepCounterStatus.textContent = '';
+                stepCounterStatus.classList.remove('is-active');
+                stopAutoStep();
             });
             editor.addEventListener('scroll', () => {
                 lineNumbers.scrollTop = editor.scrollTop;
@@ -900,6 +971,42 @@
                 const lines = beforeCursor.split('\n');
                 cursorPosition.textContent = `行 ${lines.length}、列 ${lines.at(-1).length + 1}`;
                 updateActiveLine();
+            };
+
+            window.showStepPosition = (lineNumber, finished, statsJson) => {
+                lineNumbers.querySelector('.line-number.is-step')?.classList.remove('is-step');
+                if (lineNumber) {
+                    const sourceLines = editor.value.split('\n');
+                    const safeLine = Math.min(sourceLines.length, Math.max(1, Number(lineNumber)));
+                    lineNumbers.children[safeLine - 1]?.classList.add('is-step');
+                    const position = sourceLines.slice(0, safeLine - 1)
+                        .reduce((total, line) => total + line.length + 1, 0);
+                    editor.setSelectionRange(position, position);
+                    const styles = getComputedStyle(editor);
+                    const lineHeight = parseFloat(styles.lineHeight);
+                    const paddingTop = parseFloat(styles.paddingTop);
+                    const targetTop = paddingTop + (safeLine - 1) * lineHeight;
+                    editor.scrollTop = Math.max(0, targetTop - editor.clientHeight / 2);
+                    updateCursorPosition();
+                }
+                const stats = statsJson ? JSON.parse(statsJson) : null;
+                if (stats) {
+                    const conditionDetails = stats.trueCount || stats.falseCount
+                        ? `（真 ${stats.trueCount}回／偽 ${stats.falseCount}回）`
+                        : '';
+                    stepCounterStatus.textContent = `${finished ? '完了｜' : ''}${stats.label}：実行 ${stats.count}回${conditionDetails}`;
+                    stepCounterStatus.classList.add('is-active');
+                }
+                stepButton.textContent = finished ? '最初から ↺' : '次の行 ▷';
+                if (finished) stopAutoStep();
+            };
+
+            window.clearStepPosition = () => {
+                lineNumbers.querySelector('.line-number.is-step')?.classList.remove('is-step');
+                stepButton.textContent = 'ステップ実行 ▷';
+                stepCounterStatus.textContent = '';
+                stepCounterStatus.classList.remove('is-active');
+                stopAutoStep();
             };
 
             editor.addEventListener('keydown', (event) => {
@@ -942,6 +1049,7 @@
         import traceback
         import re
         import json
+        import random
 
         def transpile_to_python(code):
             """共通テスト仕様のプログラムをPythonコードに変換"""
@@ -1088,19 +1196,33 @@
                 "execution": list(execution_stats.values())
             }
 
-        def execute_code(show_diagram=False):
+        class StepPause(Exception):
+            pass
+
+        step_state = {"code": None, "target": 0, "finished": False, "random_state": None}
+
+        def execute_code(show_diagram=False, step_limit=None):
             document["output-area"].text = ""
             sys.stdout = io.StringIO()
             sys.stderr = io.StringIO()
             raw_code = document["code-editor"].value
             execution_stats = create_execution_stats(raw_code)
+            progress = {"events": 0, "last_line": None}
+
+            def begin_event(line_number):
+                progress["events"] += 1
+                if step_limit is not None and progress["events"] > step_limit:
+                    raise StepPause()
+                progress["last_line"] = line_number
 
             def track_line(line_number):
+                begin_event(line_number)
                 if line_number in execution_stats:
                     execution_stats[line_number]["count"] += 1
 
             def track_condition(line_number, value):
                 result = bool(value)
+                begin_event(line_number)
                 if line_number in execution_stats:
                     execution_stats[line_number]["count"] += 1
                     key = "trueCount" if result else "falseCount"
@@ -1118,11 +1240,16 @@
                 "__track_iter": track_iter
             }
 
+            paused = False
+            failed = False
             try:
                 python_code = transpile_to_python(raw_code)
                 # print("【内部で変換されたPythonコード】\n" + python_code) # デバッグ用
                 exec(python_code, namespace)
+            except StepPause:
+                paused = True
             except Exception as e:
+                failed = True
                 print("【エラーが発生しました】")
                 print(traceback.format_exc())
 
@@ -1132,10 +1259,42 @@
                 diagram_data = collect_variables(namespace, execution_stats)
                 window.showVariableDiagram(json.dumps(diagram_data, ensure_ascii=False))
 
+            return {
+                "finished": not paused,
+                "failed": failed,
+                "last_line": progress["last_line"],
+                "last_stats": execution_stats.get(progress["last_line"])
+            }
+
         def run_code(event):
+            step_state.update({"code": None, "target": 0, "finished": False, "random_state": None})
+            window.clearStepPosition()
             execute_code(show_diagram=True)
 
+        def step_code(event):
+            raw_code = document["code-editor"].value
+            if step_state["code"] != raw_code or step_state["finished"]:
+                step_state.update({
+                    "code": raw_code,
+                    "target": 1,
+                    "finished": False,
+                    "random_state": random.getstate()
+                })
+            else:
+                step_state["target"] += 1
+
+            previous_random_state = random.getstate()
+            try:
+                random.setstate(step_state["random_state"])
+                result = execute_code(show_diagram=True, step_limit=step_state["target"])
+            finally:
+                random.setstate(previous_random_state)
+            step_state["finished"] = result["finished"]
+            stats_json = json.dumps(result["last_stats"], ensure_ascii=False)
+            window.showStepPosition(result["last_line"], result["finished"], stats_json)
+
         document["run-btn"].bind("click", run_code)
+        document["step-btn"].bind("click", step_code)
     </script>
 </body>
 </html>
