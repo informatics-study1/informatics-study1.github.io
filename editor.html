@@ -895,7 +895,7 @@
             array_ids = {}
 
             for name, value in namespace.items():
-                if name.startswith("__") or name in ("random", "math"):
+                if name.startswith(("__", "$")) or name in ("random", "math"):
                     continue
 
                 if isinstance(value, (list, tuple)):
