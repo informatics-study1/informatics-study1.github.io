@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>共通テスト仕様 プログラムエディタ</title>
+    <!-- Brythonを読み込む -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/brython/3.11.2/brython.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/brython/3.11.2/brython_stdlib.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;600;700&display=swap');
+        :root {
+            color-scheme: light;
+            --bg: #f8f9fa;
+            --panel: #fff;
+            --panel-2: #f3f3f3;
+            --border: #bbbbbbb8;
+            --text: #212529;
+            --muted: #6c757d;
+            --accent: #428bca;
+            --green: #198754;
+            --sans: 'Noto Sans JP', Meiryo, sans-serif;
+            --mono: Monaco, Menlo, 'Ubuntu Mono', Consolas, source-code-pro, monospace;
+        }
+        * { box-sizing: border-box; }
+        body {
+            min-width: 620px;
+            min-height: 100vh;
+            margin: 0;
+            padding: 0 .5em;
+            background: var(--bg);
+            color: var(--text);
+            font-family: var(--sans);
+            overflow: hidden;
+        }
+        .app-shell {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            gap: 0;
+        }
+        .titlebar {
+            display: none;
+            grid-template-columns: 1fr auto 1fr;
+            align-items: center;
+            height: 42px;
+            padding: 0 14px;
+            background: #15171b;
+            border-bottom: 1px solid var(--border);
+            font-size: 13px;
+        }
+        .brand { color: var(--accent); font-weight: 700; letter-spacing: .04em; }
+        .app-title { color: #aeb4bf; }
+        .window-actions { justify-self: end; display: flex; gap: 7px; }
+        .window-actions span { width: 10px; height: 10px; border-radius: 50%; background: #454b56; }
+        .window-actions span:first-child { background: #e06c75; }
+        .window-actions span:nth-child(2) { background: #e5c07b; }
+        .window-actions span:last-child { background: #98c379; }
+        .toolbar {
+            display: flex;
+            align-items: center;
+            gap: .5em;
+            height: auto;
+            min-height: 58px;
+            padding: .6em .2em;
+            background: transparent;
+            border: 0;
+            overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toolbar::-webkit-scrollbar { display: none; }
+        button {
+            padding: .55em 1.15em;
+            border: 0;
+            border-radius: 4px;
+            color: #444;
+            background: linear-gradient(#fff, #f9f9f9);
+            box-shadow: 0 0 2px 1px rgba(0,0,0,.32), inset 0 1px 0 #fff;
+            font: 600 13px var(--sans);
+            cursor: pointer;
+            transition: background .15s, transform .15s;
+        }
+        button:hover { background: linear-gradient(#fff, #f0f0f0); color: #222; }
+        #run-btn { color: #fff; background: #a42; box-shadow: 0 0 2px 1px rgba(0,0,0,.32); }
+        #run-btn:hover { background: #80331a; color: #fff; }
+        .tool-icon-button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 38px;
+            height: 34px;
+            padding: 0;
+            color: #444;
+        }
+        .tool-icon-button svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+        .tool-icon-button.is-success { color: #198754; box-shadow: 0 0 0 2px rgba(25,135,84,.25), 0 0 2px 1px rgba(0,0,0,.25); }
+        .qr-dialog {
+            position: fixed;
+            inset: 0;
+            z-index: 1000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            background: rgba(0,0,0,.45);
+        }
+        .qr-dialog.is-open { display: flex; }
+        .qr-card {
+            position: relative;
+            width: min(320px, 100%);
+            padding: 22px;
+            border-radius: 8px;
+            background: #fff;
+            box-shadow: 0 10px 35px rgba(0,0,0,.3);
+            text-align: center;
+        }
+        .qr-card h2 { margin: 0 0 16px; font-size: 17px; }
+        .qr-code { display: flex; min-height: 220px; align-items: center; justify-content: center; }
+        .qr-code img, .qr-code canvas { max-width: 100%; height: auto; }
+        .qr-message { margin: 12px 0 0; color: var(--muted); font-size: 12px; }
+        .qr-error { color: #b42318; }
+        .qr-close { position: absolute; top: 8px; right: 8px; padding: 3px 9px; box-shadow: none; font-size: 20px; }
+        button:active { transform: translateY(1px); }
+        .editor-container { display: flex; flex: 1; min-height: 0; flex-direction: row; gap: 0; padding-bottom: 6px; }
+        .editor-shell {
+            display: flex;
+            flex: 1 1 50%;
+            min-height: 160px;
+            overflow: hidden;
+            background: #fff;
+            border: 1.5px solid var(--border);
+            border-radius: 4px;
+        }
+        .pane-resizer {
+            position: relative;
+            flex: 0 0 12px;
+            cursor: col-resize;
+            touch-action: none;
+            outline: none;
+        }
+        .pane-resizer::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 4px;
+            width: 4px;
+            height: 34px;
+            border-radius: 4px;
+            background: #c6c6c6;
+            transform: translateY(-50%);
+            transition: background .15s, height .15s;
+        }
+        .pane-resizer:hover::before,
+        .pane-resizer:focus::before,
+        .pane-resizer.is-dragging::before { height: 52px; background: var(--accent); }
+        body.is-resizing { cursor: col-resize; user-select: none; }
+        .line-numbers {
+            flex: 0 0 auto;
+            min-width: 4em;
+            margin: 0;
+            padding: 16px 12px 16px 8px;
+            overflow: hidden;
+            color: #9a9a9a;
+            background: #f4f4f4;
+            border-right: 1px solid #ddd;
+            font: 1.1em/normal var(--mono);
+            font-weight: 300;
+            text-align: right;
+            user-select: none;
+        }
+        .code-pane {
+            position: relative;
+            flex: 1;
+            min-width: 0;
+            height: 100%;
+            overflow: hidden;
+        }
+        .code-highlight {
+            position: absolute;
+            inset: 0;
+            z-index: 0;
+            margin: 0;
+            padding: 16px 18px;
+            overflow: hidden;
+            color: #212529;
+            background: #f8f9fa;
+            pointer-events: none;
+            font: 1.1em/normal var(--mono);
+            font-weight: 300;
+            white-space: pre;
+            tab-size: 4;
+        }
+        .token-keyword { color: #8959a8; font-weight: 400; }
+        .token-function { color: #4271ae; }
+        .token-string { color: #718c00; }
+        .token-number { color: #f5871f; }
+        .token-comment { color: #8e908c; font-style: italic; }
+        .token-operator { color: #3e999f; }
+        .indent-guide {
+            display: inline-block;
+            border-left: 1px solid #c7c7c7;
+            box-sizing: border-box;
+        }
+        textarea {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            min-width: 0;
+            height: 100%;
+            padding: 16px 18px;
+            border: 0;
+            resize: none;
+            outline: none;
+            color: transparent;
+            background: transparent;
+            caret-color: #222;
+            tab-size: 4;
+            font: 1.1em/normal var(--mono);
+            font-weight: 300;
+            white-space: pre;
+            overflow: auto;
+        }
+        textarea::selection { color: transparent; background: rgba(66, 139, 202, .28); }
+        .code-pane:focus-within .code-highlight { background: #fff; }
+        .viewer-panel {
+            display: flex;
+            flex: 1 1 50%;
+            min-width: 0;
+            min-height: 0;
+            flex-direction: column;
+            overflow: hidden;
+            background: #fff;
+            border: 1.5px solid var(--border);
+            border-radius: 4px;
+        }
+        .panel-header {
+            display: flex;
+            align-items: center;
+            height: 38px;
+            padding: 0 16px;
+            border-top: 0;
+            border-bottom: 1px solid var(--border);
+            background: #fff;
+            color: #444;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: .08em;
+        }
+        .panel-header::before { content: '>_'; margin-right: 9px; color: var(--green); }
+        .panel-hint { margin-left: auto; color: var(--muted); font-weight: 400; letter-spacing: 0; }
+        .output-container {
+            flex: 1;
+            min-height: 115px;
+            padding: 14px 18px;
+            overflow-y: auto;
+            color: #212529;
+            background: #e9ecef;
+            font: 1em/normal var(--mono);
+            font-weight: 300;
+            white-space: pre-wrap;
+        }
+        .output-container:empty::before { content: '実行待ち'; color: #6c757d; }
+        .statusbar {
+            display: flex;
+            align-items: center;
+            gap: 18px;
+            height: 26px;
+            padding: 0 12px;
+            background: transparent;
+            color: #666;
+            border-top: 1px solid #ddd;
+            font-size: 12px;
+        }
+        .status-right { margin-left: auto; display: flex; gap: 18px; }
+        @media (max-width: 700px) {
+            .app-title, .shortcut { display: none; }
+            body { min-width: 320px; overflow: auto; }
+            .app-shell { min-height: 760px; }
+            .editor-container { flex-direction: column; }
+            .pane-resizer { display: none; }
+            .editor-shell, .viewer-panel { flex: 1 1 50% !important; }
+        }
+    </style>
+</head>
+<body onload="brython()">
+    <div class="app-shell">
+    <header class="titlebar">
+        <div class="brand">CT CODE</div>
+        <div class="app-title">共通テスト仕様 プログラムエディタ</div>
+        <div class="window-actions" aria-hidden="true"><span></span><span></span><span></span></div>
+    </header>
+    <div class="toolbar">
+        <button id="run-btn" type="button">実行 ▶</button>
+        <button id="save-btn" class="tool-icon-button" type="button" aria-label="テキストファイルとして保存" title="テキストファイルとして保存">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4"/><path d="M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/></svg>
+        </button>
+        <button id="share-btn" class="tool-icon-button" type="button" aria-label="リンクを共有" title="リンクを共有">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.1.1l2-2a5 5 0 0 0-7.1-7.1l-1.1 1.1"/><path d="M14 11a5 5 0 0 0-7.1-.1l-2 2A5 5 0 0 0 12 20l1.1-1.1"/></svg>
+        </button>
+        <button id="qr-btn" class="tool-icon-button" type="button" aria-label="共有QRコードを表示" title="共有QRコードを表示">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3z"/><path d="M15 14h2v2h-2zm4 0h2v4h-2zm-4 4h4v3h-4zm6 2v1"/></svg>
+        </button>
+        <button id="flowchart-btn" class="tool-icon-button" type="button" aria-label="フローチャートを別画面で表示" title="フローチャートを別画面で表示">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="2" width="8" height="5" rx="1"/><path d="M12 7v3m0 0-5 3m5-3 5 3"/><rect x="3" y="13" width="8" height="5" rx="1"/><path d="M7 18v3h10v-3"/><rect x="13" y="13" width="8" height="5" rx="1"/></svg>
+        </button>
+    </div>
+    <div class="editor-container">
+        <div class="editor-shell">
+            <pre id="line-numbers" class="line-numbers" aria-hidden="true">1</pre>
+            <div class="code-pane">
+            <pre id="code-highlight" class="code-highlight" aria-hidden="true"></pre>
+            <textarea id="code-editor" aria-label="コードエディタ" spellcheck="false">
+Data = [10, 20, 30, 40, 50]
+合計 = 0
+
+i を 0 から 4 まで 1 ずつ増やしながら繰り返す:
+    合計 = 合計 + Data[i]
+    表示する(Data[i])
+
+表示する("合計:", 合計)
+
+x = 15
+y = 25
+もし x > 10 かつ y > 20 ならば:
+    表示する("条件を満たしました")
+            </textarea>
+            </div>
+        </div>
+        <div id="pane-resizer" class="pane-resizer" role="separator" aria-label="エディタと実行結果の幅を調整" aria-orientation="vertical" aria-valuemin="20" aria-valuemax="80" aria-valuenow="50" tabindex="0"></div>
+        <section class="viewer-panel" aria-label="実行結果ビューア">
+        <div class="panel-header">OUTPUT <span class="panel-hint">実行結果</span></div>
+        <div id="output-area" class="output-container"></div>
+        </section>
+    </div>
+    <footer class="statusbar">
+        <span>● Ready</span>
+        <div class="status-right">
+            <span id="cursor-position">行 1、列 1</span>
+            <span>Spaces: 4</span>
+            <span>UTF-8</span>
+        </div>
+    </footer>
+    </div>
+
+    <div id="qr-dialog" class="qr-dialog" role="dialog" aria-modal="true" aria-labelledby="qr-title" aria-hidden="true">
+        <div class="qr-card">
+            <button id="qr-close" class="qr-close" type="button" aria-label="閉じる">×</button>
+            <h2 id="qr-title">プログラム共有QRコード</h2>
+            <div id="qr-code" class="qr-code"></div>
+            <p id="qr-message" class="qr-message">スマートフォンのカメラで読み取ってください。</p>
+        </div>
+    </div>
+
+    <!-- 変換・実行エンジン -->
+    <script>
+        (async () => {
+            const editor = document.getElementById('code-editor');
+            const lineNumbers = document.getElementById('line-numbers');
+            const codeHighlight = document.getElementById('code-highlight');
+            const cursorPosition = document.getElementById('cursor-position');
+            const editorContainer = document.querySelector('.editor-container');
+            const editorShell = document.querySelector('.editor-shell');
+            const paneResizer = document.getElementById('pane-resizer');
+            const saveButton = document.getElementById('save-btn');
+            const shareButton = document.getElementById('share-btn');
+            const qrButton = document.getElementById('qr-btn');
+            const flowchartButton = document.getElementById('flowchart-btn');
+            const qrDialog = document.getElementById('qr-dialog');
+            const qrCode = document.getElementById('qr-code');
+            const qrMessage = document.getElementById('qr-message');
+            const qrClose = document.getElementById('qr-close');
+
+            const showButtonSuccess = (button, message) => {
+                const originalLabel = button.getAttribute('aria-label');
+                const originalTitle = button.title;
+                button.classList.add('is-success');
+                button.setAttribute('aria-label', message);
+                button.title = message;
+                window.setTimeout(() => {
+                    button.classList.remove('is-success');
+                    button.setAttribute('aria-label', originalLabel);
+                    button.title = originalTitle;
+                }, 1500);
+            };
+
+            saveButton.addEventListener('click', () => {
+                const file = new Blob([editor.value], { type: 'text/plain;charset=utf-8' });
+                const downloadUrl = URL.createObjectURL(file);
+                const downloadLink = document.createElement('a');
+                downloadLink.href = downloadUrl;
+                downloadLink.download = 'program.txt';
+                document.body.appendChild(downloadLink);
+                downloadLink.click();
+                downloadLink.remove();
+                window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000);
+
+                showButtonSuccess(saveButton, '保存しました');
+            });
+
+            const bytesToBase64Url = (bytes) => {
+                let binary = '';
+                for (const byte of bytes) binary += String.fromCharCode(byte);
+                return btoa(binary).replaceAll('+', '-').replaceAll('/', '_').replace(/=+$/, '');
+            };
+
+            const base64UrlToBytes = (encoded) => {
+                const base64 = encoded.replaceAll('-', '+').replaceAll('_', '/');
+                const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, '=');
+                const binary = atob(padded);
+                return Uint8Array.from(binary, (character) => character.charCodeAt(0));
+            };
+
+            const encodeCode = async (text) => {
+                const bytes = new TextEncoder().encode(text);
+                const uncompressed = bytesToBase64Url(bytes);
+                if (!('CompressionStream' in window) || !('DecompressionStream' in window)) {
+                    return `u.${uncompressed}`;
+                }
+                try {
+                    const stream = new Blob([bytes]).stream().pipeThrough(new CompressionStream('gzip'));
+                    const compressed = new Uint8Array(await new Response(stream).arrayBuffer());
+                    const compressedText = bytesToBase64Url(compressed);
+                    return compressedText.length + 2 < uncompressed.length
+                        ? `z.${compressedText}`
+                        : `u.${uncompressed}`;
+                } catch (error) {
+                    return `u.${uncompressed}`;
+                }
+            };
+
+            const decodeCode = async (encoded) => {
+                const isCompressed = encoded.startsWith('z.');
+                const payload = encoded.startsWith('z.') || encoded.startsWith('u.')
+                    ? encoded.slice(2)
+                    : encoded;
+                let bytes = base64UrlToBytes(payload);
+                if (isCompressed) {
+                    const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
+                    bytes = new Uint8Array(await new Response(stream).arrayBuffer());
+                }
+                return new TextDecoder().decode(bytes);
+            };
+
+            const createShareUrl = async () => {
+                const shareUrl = new URL(window.location.href);
+                shareUrl.hash = `code=${await encodeCode(editor.value)}`;
+                return shareUrl.href;
+            };
+
+            const copyText = async (text) => {
+                if (navigator.clipboard && window.isSecureContext) {
+                    await navigator.clipboard.writeText(text);
+                    return;
+                }
+                const copyArea = document.createElement('textarea');
+                copyArea.value = text;
+                copyArea.style.position = 'fixed';
+                copyArea.style.opacity = '0';
+                document.body.appendChild(copyArea);
+                copyArea.select();
+                const copied = document.execCommand('copy');
+                copyArea.remove();
+                if (!copied) throw new Error('Clipboard copy failed');
+            };
+
+            shareButton.addEventListener('click', async () => {
+                const shareUrl = await createShareUrl();
+                try {
+                    await copyText(shareUrl);
+                    showButtonSuccess(shareButton, 'リンクをコピーしました');
+                } catch (error) {
+                    window.prompt('このURLをコピーしてください', shareUrl);
+                    showButtonSuccess(shareButton, '共有リンクを作成しました');
+                }
+            });
+
+            const closeQrDialog = () => {
+                qrDialog.classList.remove('is-open');
+                qrDialog.setAttribute('aria-hidden', 'true');
+                qrButton.focus();
+            };
+
+            qrButton.addEventListener('click', async () => {
+                qrDialog.classList.add('is-open');
+                qrDialog.setAttribute('aria-hidden', 'false');
+                qrCode.replaceChildren();
+                qrMessage.classList.remove('qr-error');
+                qrMessage.textContent = 'QRコードを作成しています…';
+                try {
+                    if (typeof QRCode === 'undefined') throw new Error('QR library unavailable');
+                    const shareUrl = await createShareUrl();
+                    new QRCode(qrCode, {
+                        text: shareUrl,
+                        width: 220,
+                        height: 220,
+                        colorDark: '#111111',
+                        colorLight: '#ffffff',
+                        correctLevel: QRCode.CorrectLevel.L
+                    });
+                    qrMessage.textContent = 'スマートフォンのカメラで読み取ってください。';
+                    qrClose.focus();
+                } catch (error) {
+                    qrMessage.classList.add('qr-error');
+                    qrMessage.textContent = 'コードが長すぎるか、QRコード機能を読み込めませんでした。';
+                }
+            });
+            qrClose.addEventListener('click', closeQrDialog);
+            qrDialog.addEventListener('click', (event) => {
+                if (event.target === qrDialog) closeQrDialog();
+            });
+            document.addEventListener('keydown', (event) => {
+                if (event.key === 'Escape' && qrDialog.classList.contains('is-open')) closeQrDialog();
+            });
+
+            const createFlowchartSvg = (code) => {
+                const sourceLines = code.split('\n')
+                    .map((raw) => ({
+                        text: raw.trim(),
+                        indent: Math.floor((raw.match(/^[ \t]*/)[0].replaceAll('\t', '    ').length) / 4)
+                    }))
+                    .filter((line) => line.text);
+                const maxIndent = Math.max(0, ...sourceLines.map((line) => line.indent));
+                const width = Math.max(760, 620 + maxIndent * 70);
+                const center = width / 2;
+                const nodes = [
+                    { text: '開始', indent: 0, type: 'terminal' },
+                    ...sourceLines.map((line) => ({
+                        ...line,
+                        type: /^(もし\s|そうでなくもし)/.test(line.text)
+                            ? 'condition'
+                            : /(?:の間繰り返す:|ずつ(?:増やし|減らし)ながら繰り返す:)$/.test(line.text)
+                                ? 'loop'
+                                : line.text === 'そうでなければ:'
+                                    ? 'branch'
+                                    : line.text.startsWith('#') || line.text.startsWith('//') ? 'comment' : 'process'
+                    })),
+                    { text: '終了', indent: 0, type: 'terminal' }
+                ].map((node, index) => ({
+                    ...node,
+                    x: center + node.indent * 46,
+                    y: 55 + index * 88
+                }));
+                const height = nodes.at(-1).y + 55;
+                const connectors = nodes.slice(0, -1).map((node, index) => {
+                    const next = nodes[index + 1];
+                    return `<path class="connector" d="M ${node.x} ${node.y + 31} L ${next.x} ${next.y - 31}"/>`;
+                }).join('');
+                const shapes = nodes.map((node) => {
+                    const label = node.text.length > 46 ? `${node.text.slice(0, 45)}…` : node.text;
+                    const safeLabel = escapeHtml(label);
+                    if (node.type === 'condition') {
+                        return `<g><polygon class="condition" points="${node.x},${node.y - 34} ${node.x + 210},${node.y} ${node.x},${node.y + 34} ${node.x - 210},${node.y}"/><text x="${node.x}" y="${node.y}">${safeLabel}</text></g>`;
+                    }
+                    if (node.type === 'loop') {
+                        return `<g><polygon class="loop" points="${node.x - 180},${node.y - 30} ${node.x + 180},${node.y - 30} ${node.x + 210},${node.y} ${node.x + 180},${node.y + 30} ${node.x - 180},${node.y + 30} ${node.x - 210},${node.y}"/><text x="${node.x}" y="${node.y}">${safeLabel}</text></g>`;
+                    }
+                    const nodeWidth = Math.min(420, Math.max(120, label.length * 10 + 34));
+                    const className = node.type === 'comment' ? 'comment' : node.type === 'terminal' ? 'terminal' : node.type === 'branch' ? 'branch' : 'process';
+                    return `<g><rect class="${className}" x="${node.x - nodeWidth / 2}" y="${node.y - 28}" width="${nodeWidth}" height="56" rx="${node.type === 'terminal' ? 28 : 5}"/><text x="${node.x}" y="${node.y}">${safeLabel}</text></g>`;
+                }).join('');
+                return `<svg id="flowchart" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" role="img" aria-label="プログラムのフローチャート"><style>.connector{fill:none;stroke:#777;stroke-width:1.5;marker-end:url(#arrow)}rect,polygon{fill:#fff;stroke:#555;stroke-width:1.5}.condition{fill:#fff8e7;stroke:#a66b00}.loop{fill:#eef7ed;stroke:#488a42}.branch{fill:#f8f4ff;stroke:#8959a8}.terminal{fill:#e9f5ff;stroke:#428bca}.comment{fill:#f1f1f1;stroke:#999;stroke-dasharray:5 3}text{font:14px Monaco,Menlo,Consolas,monospace;text-anchor:middle;dominant-baseline:middle}</style><defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#777"/></marker></defs>${connectors}${shapes}</svg>`;
+            };
+
+            flowchartButton.addEventListener('click', () => {
+                const svg = createFlowchartSvg(editor.value);
+                const page = `<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>フローチャート</title><style>body{margin:0;padding:24px;background:#f5f6f8;color:#333;font-family:'Noto Sans JP',Meiryo,sans-serif}header{position:sticky;top:0;z-index:2;display:flex;align-items:center;gap:16px;padding:12px 16px;background:#fff;border:1px solid #ddd;border-radius:8px;box-shadow:0 2px 8px #0001}h1{margin:0;font-size:18px}.actions{margin-left:auto;display:flex;gap:8px}.actions button{padding:7px 14px;border:1px solid #bbb;border-radius:5px;background:#fff;cursor:pointer}.canvas{margin-top:18px;overflow:auto;background:#fff;border:1px solid #ddd;border-radius:8px}svg{display:block;margin:auto}@media print{body{padding:0;background:#fff}header{display:none}.canvas{margin:0;border:0}}</style></head><body><header><h1>フローチャート</h1><span>入力中のプログラムから生成</span><div class="actions"><button onclick="downloadFlowchart()">PNG保存</button><button onclick="window.print()">印刷</button></div></header><div class="canvas">${svg}</div>${'<script>'}function downloadFlowchart(){const svg=document.getElementById('flowchart');const width=svg.viewBox.baseVal.width;const height=svg.viewBox.baseVal.height;const scale=Math.min(2,16000/width,16000/height);const source=new XMLSerializer().serializeToString(svg);const image=new Image();const imageUrl=URL.createObjectURL(new Blob([source],{type:'image/svg+xml;charset=utf-8'}));image.onload=()=>{const canvas=document.createElement('canvas');canvas.width=Math.round(width*scale);canvas.height=Math.round(height*scale);const context=canvas.getContext('2d');context.fillStyle='#fff';context.fillRect(0,0,canvas.width,canvas.height);context.drawImage(image,0,0,canvas.width,canvas.height);URL.revokeObjectURL(imageUrl);const link=document.createElement('a');link.download='flowchart.png';link.href=canvas.toDataURL('image/png');link.click()};image.onerror=()=>{URL.revokeObjectURL(imageUrl);alert('PNG画像を作成できませんでした。')};image.src=imageUrl}${'</scr' + 'ipt>'}</body></html>`;
+                const pageUrl = URL.createObjectURL(new Blob([page], { type: 'text/html;charset=utf-8' }));
+                const chartWindow = window.open(pageUrl, '_blank');
+                if (!chartWindow) window.alert('別画面を開けませんでした。ポップアップを許可してください。');
+                window.setTimeout(() => URL.revokeObjectURL(pageUrl), 60000);
+            });
+
+            const setEditorWidth = (percent) => {
+                const safePercent = Math.min(80, Math.max(20, percent));
+                editorShell.style.flex = `0 0 calc(${safePercent}% - 6px)`;
+                paneResizer.setAttribute('aria-valuenow', Math.round(safePercent));
+            };
+
+            const resizeFromPointer = (clientX) => {
+                const bounds = editorContainer.getBoundingClientRect();
+                setEditorWidth(((clientX - bounds.left) / bounds.width) * 100);
+            };
+
+            paneResizer.addEventListener('pointerdown', (event) => {
+                paneResizer.setPointerCapture(event.pointerId);
+                paneResizer.classList.add('is-dragging');
+                document.body.classList.add('is-resizing');
+                resizeFromPointer(event.clientX);
+            });
+            paneResizer.addEventListener('pointermove', (event) => {
+                if (paneResizer.hasPointerCapture(event.pointerId)) resizeFromPointer(event.clientX);
+            });
+            paneResizer.addEventListener('pointerup', (event) => {
+                paneResizer.releasePointerCapture(event.pointerId);
+                paneResizer.classList.remove('is-dragging');
+                document.body.classList.remove('is-resizing');
+            });
+            paneResizer.addEventListener('pointercancel', () => {
+                paneResizer.classList.remove('is-dragging');
+                document.body.classList.remove('is-resizing');
+            });
+            paneResizer.addEventListener('keydown', (event) => {
+                if (!['ArrowLeft', 'ArrowRight', 'Home'].includes(event.key)) return;
+                event.preventDefault();
+                const current = Number(paneResizer.getAttribute('aria-valuenow'));
+                if (event.key === 'Home') setEditorWidth(50);
+                else setEditorWidth(current + (event.key === 'ArrowRight' ? 5 : -5));
+            });
+
+            const escapeHtml = (text) => text
+                .replaceAll('&', '&amp;')
+                .replaceAll('<', '&lt;')
+                .replaceAll('>', '&gt;');
+
+            const tokenPattern = /("(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\/\/[^\n]*|#[^\n]*|\b\d+(?:\.\d+)?\b|そうでなくもし|そうでなければ|ずつ増やしながら繰り返す|ずつ減らしながら繰り返す|の間繰り返す|整数乱数|要素数|整数|乱数|表示する|もし|ならば|かつ|または|でない|から|まで|を|←|==|!=|<=|>=|=|[+\-*/%<>]=?)/g;
+
+            const highlightSyntax = (source) => {
+                let lastIndex = 0;
+                let html = '';
+                for (const match of source.matchAll(tokenPattern)) {
+                    html += escapeHtml(source.slice(lastIndex, match.index));
+                    const token = match[0];
+                    let tokenClass = 'token-keyword';
+                    if (token.startsWith('"') || token.startsWith("'")) tokenClass = 'token-string';
+                    else if (token.startsWith('//') || token.startsWith('#')) tokenClass = 'token-comment';
+                    else if (/^\d/.test(token)) tokenClass = 'token-number';
+                    else if (['表示する', '要素数', '整数', '乱数', '整数乱数'].includes(token)) tokenClass = 'token-function';
+                    else if (/^(←|==|!=|<=|>=|=|[+\-*/%<>]=?)$/.test(token)) tokenClass = 'token-operator';
+                    html += `<span class="${tokenClass}">${escapeHtml(token)}</span>`;
+                    lastIndex = match.index + token.length;
+                }
+                return html + escapeHtml(source.slice(lastIndex));
+            };
+
+            const updateHighlight = () => {
+                const html = editor.value.split('\n').map((line) => {
+                    const indentation = line.match(/^(?: {4}|\t)+/)?.[0] ?? '';
+                    const guides = indentation.replace(/ {4}|\t/g, (space) =>
+                        `<span class="indent-guide">${space === '\t' ? '    ' : space}</span>`
+                    );
+                    return guides + highlightSyntax(line.slice(indentation.length));
+                }).join('\n');
+                codeHighlight.innerHTML = html + (editor.value.endsWith('\n') ? ' ' : '');
+            };
+
+            const updateLineNumbers = () => {
+                const lineCount = editor.value.split('\n').length;
+                lineNumbers.textContent = Array.from(
+                    { length: lineCount },
+                    (_, index) => index + 1
+                ).join('\n');
+            };
+
+            editor.addEventListener('input', () => {
+                updateLineNumbers();
+                updateHighlight();
+            });
+            editor.addEventListener('scroll', () => {
+                lineNumbers.scrollTop = editor.scrollTop;
+                codeHighlight.scrollTop = editor.scrollTop;
+                codeHighlight.scrollLeft = editor.scrollLeft;
+            });
+
+            const updateCursorPosition = () => {
+                const beforeCursor = editor.value.slice(0, editor.selectionStart);
+                const lines = beforeCursor.split('\n');
+                cursorPosition.textContent = `行 ${lines.length}、列 ${lines.at(-1).length + 1}`;
+            };
+
+            editor.addEventListener('keydown', (event) => {
+                if (event.key === 'Tab') {
+                    event.preventDefault();
+                    const start = editor.selectionStart;
+                    const end = editor.selectionEnd;
+                    editor.setRangeText('    ', start, end, 'end');
+                    updateLineNumbers();
+                    updateHighlight();
+                    updateCursorPosition();
+                }
+                if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+                    event.preventDefault();
+                    document.getElementById('run-btn').click();
+                }
+            });
+            ['click', 'keyup', 'select', 'input'].forEach((eventName) => {
+                editor.addEventListener(eventName, updateCursorPosition);
+            });
+
+            const sharedCode = new URLSearchParams(window.location.hash.slice(1)).get('code');
+            if (sharedCode) {
+                try {
+                    editor.value = await decodeCode(sharedCode);
+                } catch (error) {
+                    console.warn('共有URLからプログラムを読み込めませんでした。', error);
+                }
+            }
+            updateLineNumbers();
+            updateHighlight();
+            updateCursorPosition();
+        })();
+    </script>
+
+    <script type="text/python">
+        from browser import document
+        import sys
+        import io
+        import traceback
+        import re
+
+        def transpile_to_python(code):
+            """共通テスト仕様のプログラムをPythonコードに変換"""
+            lines = code.split('\n')
+            # 乱数や数学関数を使用可能にするため、標準モジュールを事前にインポート
+            python_lines = ["import random", "import math"]
+            
+            for line in lines:
+                indent = len(line) - len(line.lstrip())
+                l = line.strip()
+                
+                # 空行やコメント（// や #）はそのまま
+                if not l or l.startswith(("#", "//")):
+                    python_lines.append(line)
+                    continue
+
+                # 代入演算子「←」の変換
+                l = l.replace("←", "=")
+                
+                # 論理演算子の変換
+                l = l.replace(" かつ ", " and ")
+                l = l.replace(" または ", " or ")
+                l = l.replace(" でない ", " not ")
+
+                # 表示関数の変換
+                if l.startswith("表示する("):
+                    l = l.replace("表示する(", "print(")
+
+                # 要素数関数の変換
+                l = l.replace("要素数(", "len(")
+
+                # 値を整数に変換
+                l = l.replace("整数(", "int(")
+
+                # 指定範囲の整数乱数を生成（両端を含む）
+                l = l.replace("整数乱数(", "random.randint(")
+
+                # 0以上1未満の実数乱数を生成
+                l = l.replace("乱数()", "random.random()")
+                
+                # 条件分岐の変換
+                l = re.sub(r'^もし\s+(.+)\s+ならば:$', r'if \1:', l)
+                l = re.sub(r'^そうでなくもし\s+(.+)\s+ならば:$', r'elif \1:', l)
+                if l == "そうでなければ:":
+                    l = "else:"
+                
+                # 繰り返しの変換（増加）
+                m_for = re.match(r'^(.+)\s*を\s*(.+)\s*から\s*(.+)\s*まで\s*(.+)\s*ずつ増やしながら繰り返す:$', l)
+                if m_for:
+                    var, start, end, step = m_for.groups()
+                    l = f"for {var} in range({start}, ({end}) + 1, {step}):"
+                
+                # 繰り返しの変換（減少）
+                m_for_dec = re.match(r'^(.+)\s*を\s*(.+)\s*から\s*(.+)\s*まで\s*(.+)\s*ずつ減らしながら繰り返す:$', l)
+                if m_for_dec:
+                    var, start, end, step = m_for_dec.groups()
+                    l = f"for {var} in range({start}, ({end}) - 1, -({step})):"
+
+                # 繰り返しの変換（条件ループ）
+                m_while = re.match(r'^(.+)\s*の間繰り返す:$', l)
+                if m_while:
+                    cond = m_while.group(1)
+                    l = f"while {cond}:"
+                
+                python_lines.append(" " * indent + l)
+            
+            return "\n".join(python_lines)
+
+        def run_code(event):
+            document["output-area"].text = ""
+            sys.stdout = io.StringIO()
+            sys.stderr = io.StringIO()
+            
+            raw_code = document["code-editor"].value
+            
+            try:
+                python_code = transpile_to_python(raw_code)
+                # print("【内部で変換されたPythonコード】\n" + python_code) # デバッグ用
+                exec(python_code)
+            except Exception as e:
+                print("【エラーが発生しました】")
+                print(traceback.format_exc())
+            
+            document["output-area"].text = sys.stdout.getvalue() + sys.stderr.getvalue()
+
+        document["run-btn"].bind("click", run_code)
+    </script>
+</body>
+</html>
