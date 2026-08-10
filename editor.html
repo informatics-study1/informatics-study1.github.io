@@ -407,6 +407,23 @@
         .execution-tooltip-swatch.is-true { background: #ffb545; }
         .execution-tooltip-swatch.is-false { background: #a54c97; }
         .execution-tooltip-swatch.is-count { background: #a4cf5a; }
+        .line-explanation-tooltip {
+            position: fixed;
+            z-index: 1900;
+            display: none;
+            max-width: min(430px, calc(100vw - 24px));
+            padding: 9px 12px;
+            color: #333;
+            background: rgba(255,255,255,.98);
+            border: 1px solid #aaa;
+            border-radius: 6px;
+            box-shadow: 0 4px 14px rgba(0,0,0,.16);
+            pointer-events: none;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+        .line-explanation-tooltip.is-visible { display: block; }
+        .line-explanation-title { color: #4271ae; font-weight: 700; }
         .statusbar {
             display: flex;
             align-items: center;
@@ -491,6 +508,7 @@
     </div>
 
     <div id="execution-tooltip" class="execution-tooltip" role="tooltip" aria-hidden="true"></div>
+    <div id="line-explanation-tooltip" class="line-explanation-tooltip" role="tooltip" aria-hidden="true"></div>
 
     <div id="qr-dialog" class="qr-dialog" role="dialog" aria-modal="true" aria-labelledby="qr-title" aria-hidden="true">
         <div class="qr-card">
@@ -527,6 +545,7 @@
             const cursorPosition = document.getElementById('cursor-position');
             const variableDiagram = document.getElementById('variable-diagram');
             const executionTooltip = document.getElementById('execution-tooltip');
+            const lineExplanationTooltip = document.getElementById('line-explanation-tooltip');
             const editorContainer = document.querySelector('.editor-container');
             const editorShell = document.querySelector('.editor-shell');
             const paneResizer = document.getElementById('pane-resizer');
@@ -1028,15 +1047,103 @@
                 ).join('');
             };
 
+            const explainCodeLine = (source, lineNumber) => {
+                const text = source.trim();
+                if (!text) return null;
+                if (text.startsWith('#') || text.startsWith('//')) {
+                    return { title: `${lineNumber}行目：コメント`, description: 'プログラムを説明するための行であり、実行時の処理には影響しない。' };
+                }
+
+                let match = text.match(/^もし\s+(.+)\s+ならば:$/);
+                if (match) return { title: `${lineNumber}行目：条件分岐`, description: `条件「${match[1]}」が真の場合に、インデントされた処理を実行する条件分岐である。` };
+                match = text.match(/^そうでなくもし\s+(.+)\s+ならば:$/);
+                if (match) return { title: `${lineNumber}行目：追加の条件分岐`, description: `それまでの条件が偽であり、条件「${match[1]}」が真の場合に処理を実行する。` };
+                if (text === 'そうでなければ:') {
+                    return { title: `${lineNumber}行目：それ以外の分岐`, description: 'それまでの条件がすべて偽だった場合に、インデントされた処理を実行する分岐である。' };
+                }
+
+                match = text.match(/^(.+)\s*を\s*(.+)\s*から\s*(.+)\s*まで\s*(.+)\s*ずつ増やしながら繰り返す:$/);
+                if (match) return { title: `${lineNumber}行目：順次繰り返し`, description: `変数「${match[1].trim()}」を${match[2]}から${match[3]}まで${match[4]}ずつ増やし、範囲内の処理を繰り返す。` };
+                match = text.match(/^(.+)\s*を\s*(.+)\s*から\s*(.+)\s*まで\s*(.+)\s*ずつ減らしながら繰り返す:$/);
+                if (match) return { title: `${lineNumber}行目：順次繰り返し`, description: `変数「${match[1].trim()}」を${match[2]}から${match[3]}まで${match[4]}ずつ減らし、範囲内の処理を繰り返す。` };
+                match = text.match(/^(.+)\s*の間繰り返す:$/);
+                if (match) return { title: `${lineNumber}行目：条件繰り返し`, description: `条件「${match[1]}」が真である間、インデントされた処理を繰り返す。` };
+
+                match = text.match(/^表示する\((.*)\)$/);
+                if (match) return { title: `${lineNumber}行目：表示`, description: `「${match[1]}」の値を実行結果へ表示する処理である。` };
+                match = text.match(/^([^=!<>]+?)\s*(?:←|=)\s*([^=].*)$/);
+                if (match) {
+                    const target = match[1].trim();
+                    const expression = match[2].trim();
+                    const arrayElement = target.match(/^(.+?)\[(.+)\]$/);
+                    if (arrayElement) {
+                        return {
+                            title: `${lineNumber}行目：配列要素への代入`,
+                            description: `式「${expression}」を計算し、その結果を配列「${arrayElement[1].trim()}」の添字「${arrayElement[2].trim()}」の要素へ代入する。`
+                        };
+                    }
+                    if (expression.startsWith('[') && expression.endsWith(']')) {
+                        return {
+                            title: `${lineNumber}行目：配列への代入`,
+                            description: `配列「${expression}」を配列変数「${target}」へ代入する。`
+                        };
+                    }
+                    return {
+                        title: `${lineNumber}行目：変数への代入`,
+                        description: `式「${expression}」を計算し、その結果を変数「${target}」へ代入する。`
+                    };
+                }
+
+                return { title: `${lineNumber}行目：処理`, description: '式または関数呼び出しを実行する処理である。' };
+            };
+
+            const hideLineExplanation = () => {
+                lineExplanationTooltip.classList.remove('is-visible');
+                lineExplanationTooltip.setAttribute('aria-hidden', 'true');
+            };
+
+            editor.addEventListener('pointermove', (event) => {
+                const styles = getComputedStyle(editor);
+                const lineHeight = parseFloat(styles.lineHeight);
+                const paddingTop = parseFloat(styles.paddingTop);
+                const bounds = editor.getBoundingClientRect();
+                const lineIndex = Math.floor((event.clientY - bounds.top + editor.scrollTop - paddingTop) / lineHeight);
+                const sourceLines = editor.value.split('\n');
+                if (lineIndex < 0 || lineIndex >= sourceLines.length) {
+                    hideLineExplanation();
+                    return;
+                }
+                const explanation = explainCodeLine(sourceLines[lineIndex], lineIndex + 1);
+                if (!explanation) {
+                    hideLineExplanation();
+                    return;
+                }
+
+                lineExplanationTooltip.innerHTML = `<div class="line-explanation-title">${escapeHtml(explanation.title)}</div><div>${escapeHtml(explanation.description)}</div>`;
+                lineExplanationTooltip.classList.add('is-visible');
+                lineExplanationTooltip.setAttribute('aria-hidden', 'false');
+                const gap = 14;
+                const maxLeft = window.innerWidth - lineExplanationTooltip.offsetWidth - 10;
+                let top = event.clientY + gap;
+                if (top + lineExplanationTooltip.offsetHeight > window.innerHeight - 10) {
+                    top = event.clientY - lineExplanationTooltip.offsetHeight - gap;
+                }
+                lineExplanationTooltip.style.left = `${Math.max(10, Math.min(event.clientX + gap, maxLeft))}px`;
+                lineExplanationTooltip.style.top = `${Math.max(10, top)}px`;
+            });
+            editor.addEventListener('pointerleave', hideLineExplanation);
+
             editor.addEventListener('input', () => {
                 updateLineNumbers();
                 updateHighlight();
+                hideLineExplanation();
                 stepButton.textContent = 'ステップ実行 ▷';
                 stepCounterStatus.textContent = '';
                 stepCounterStatus.classList.remove('is-active');
                 stopAutoStep();
             });
             editor.addEventListener('scroll', () => {
+                hideLineExplanation();
                 lineNumbers.scrollTop = editor.scrollTop;
                 codeHighlight.scrollTop = editor.scrollTop;
                 codeHighlight.scrollLeft = editor.scrollLeft;
