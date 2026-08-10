@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>共通テスト仕様 プログラムエディタ</title>
+    <title>共通テスト用プログラム表記対応エディタ</title>
     <!-- Brythonを読み込む -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/brython/3.11.2/brython.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/brython/3.11.2/brython_stdlib.js"></script>
@@ -309,21 +309,7 @@
             <pre id="line-numbers" class="line-numbers" aria-hidden="true">1</pre>
             <div class="code-pane">
             <pre id="code-highlight" class="code-highlight" aria-hidden="true"></pre>
-            <textarea id="code-editor" aria-label="コードエディタ" spellcheck="false">
-Data = [10, 20, 30, 40, 50]
-合計 = 0
-
-i を 0 から 4 まで 1 ずつ増やしながら繰り返す:
-    合計 = 合計 + Data[i]
-    表示する(Data[i])
-
-表示する("合計:", 合計)
-
-x = 15
-y = 25
-もし x > 10 かつ y > 20 ならば:
-    表示する("条件を満たしました")
-            </textarea>
+            <textarea id="code-editor" aria-label="コードエディタ" spellcheck="false"></textarea>
             </div>
         </div>
         <div id="pane-resizer" class="pane-resizer" role="separator" aria-label="エディタと実行結果の幅を調整" aria-orientation="vertical" aria-valuemin="20" aria-valuemax="80" aria-valuenow="50" tabindex="0"></div>
