@@ -163,29 +163,47 @@
             color: #9a9a9a;
             background: #f4f4f4;
             border-right: 1px solid #ddd;
-            font: 1.1em/normal var(--mono);
+            font: 1.1em/1.2 var(--mono);
             font-weight: 300;
             text-align: right;
             user-select: none;
         }
+        .line-number {
+            display: block;
+            margin-right: -12px;
+            margin-left: -8px;
+            padding-right: 12px;
+            padding-left: 8px;
+        }
+        .line-number.is-active { background: #dedede; color: #555; }
         .code-pane {
             position: relative;
             flex: 1;
             min-width: 0;
             height: 100%;
             overflow: hidden;
+            background: #f8f9fa;
+        }
+        .current-line-highlight {
+            position: absolute;
+            z-index: 0;
+            left: 0;
+            right: 0;
+            box-sizing: border-box;
+            background: rgba(66, 139, 202, .10);
+            pointer-events: none;
         }
         .code-highlight {
             position: absolute;
             inset: 0;
-            z-index: 0;
+            z-index: 1;
             margin: 0;
             padding: 16px 18px;
             overflow: hidden;
             color: #212529;
-            background: #f8f9fa;
+            background: transparent;
             pointer-events: none;
-            font: 1.1em/normal var(--mono);
+            font: 1.1em/1.2 var(--mono);
             font-weight: 300;
             white-space: pre;
             tab-size: 4;
@@ -203,7 +221,7 @@
         }
         textarea {
             position: relative;
-            z-index: 1;
+            z-index: 2;
             width: 100%;
             min-width: 0;
             height: 100%;
@@ -215,13 +233,13 @@
             background: transparent;
             caret-color: #222;
             tab-size: 4;
-            font: 1.1em/normal var(--mono);
+            font: 1.1em/1.2 var(--mono);
             font-weight: 300;
             white-space: pre;
             overflow: auto;
         }
         textarea::selection { color: transparent; background: rgba(66, 139, 202, .28); }
-        .code-pane:focus-within .code-highlight { background: #fff; }
+        .code-pane:focus-within { background: #fff; }
         .viewer-panel {
             display: flex;
             flex: 1 1 50%;
@@ -312,6 +330,7 @@
         <div class="editor-shell">
             <pre id="line-numbers" class="line-numbers" aria-hidden="true">1</pre>
             <div class="code-pane">
+            <div id="current-line-highlight" class="current-line-highlight" aria-hidden="true"></div>
             <pre id="code-highlight" class="code-highlight" aria-hidden="true"></pre>
             <textarea id="code-editor" aria-label="コードエディタ" spellcheck="false"></textarea>
             </div>
@@ -346,6 +365,7 @@
         (async () => {
             const editor = document.getElementById('code-editor');
             const lineNumbers = document.getElementById('line-numbers');
+            const currentLineHighlight = document.getElementById('current-line-highlight');
             const codeHighlight = document.getElementById('code-highlight');
             const cursorPosition = document.getElementById('cursor-position');
             const editorContainer = document.querySelector('.editor-container');
@@ -657,10 +677,10 @@
 
             const updateLineNumbers = () => {
                 const lineCount = editor.value.split('\n').length;
-                lineNumbers.textContent = Array.from(
+                lineNumbers.innerHTML = Array.from(
                     { length: lineCount },
-                    (_, index) => index + 1
-                ).join('\n');
+                    (_, index) => `<span class="line-number">${index + 1}</span>`
+                ).join('');
             };
 
             editor.addEventListener('input', () => {
@@ -671,12 +691,28 @@
                 lineNumbers.scrollTop = editor.scrollTop;
                 codeHighlight.scrollTop = editor.scrollTop;
                 codeHighlight.scrollLeft = editor.scrollLeft;
+                updateActiveLine();
             });
+
+            const updateActiveLine = () => {
+                const currentLine = editor.value.slice(0, editor.selectionStart).split('\n').length - 1;
+                lineNumbers.querySelector('.line-number.is-active')?.classList.remove('is-active');
+                lineNumbers.children[currentLine]?.classList.add('is-active');
+                const styles = getComputedStyle(editor);
+                const fontSize = parseFloat(styles.fontSize);
+                const lineHeight = styles.lineHeight === 'normal'
+                    ? fontSize * 1.2
+                    : parseFloat(styles.lineHeight);
+                const paddingTop = parseFloat(styles.paddingTop);
+                currentLineHighlight.style.height = `${lineHeight}px`;
+                currentLineHighlight.style.top = `${paddingTop + currentLine * lineHeight - editor.scrollTop}px`;
+            };
 
             const updateCursorPosition = () => {
                 const beforeCursor = editor.value.slice(0, editor.selectionStart);
                 const lines = beforeCursor.split('\n');
                 cursorPosition.textContent = `行 ${lines.length}、列 ${lines.at(-1).length + 1}`;
+                updateActiveLine();
             };
 
             editor.addEventListener('keydown', (event) => {
