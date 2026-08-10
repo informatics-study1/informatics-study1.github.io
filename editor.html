@@ -340,9 +340,6 @@
         <button id="flowchart-btn" class="tool-icon-button" type="button" aria-label="フローチャートを別画面で表示" title="フローチャートを別画面で表示">
             <svg viewBox="0 0 24 24" aria-hidden="true" stroke-width="2.4"><rect x="8" y="1.5" width="8" height="7" rx="2"/><path d="M12 8.5v4M5.5 15v-2.5h13V15"/><rect x="1.5" y="15" width="8" height="7.5" rx="2"/><rect x="14.5" y="15" width="8" height="7.5" rx="2"/></svg>
         </button>
-        <button id="variable-diagram-btn" class="tool-icon-button" type="button" aria-label="変数図を表示" title="変数図を表示">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="4" width="7" height="5" rx="1"/><rect x="15" y="3" width="7" height="4" rx="1"/><rect x="15" y="10" width="7" height="4" rx="1"/><rect x="15" y="17" width="7" height="4" rx="1"/><path d="M9 6.5h3v12h3M12 12h3"/></svg>
-        </button>
     </div>
     <div class="editor-container">
         <div class="editor-shell">
@@ -398,7 +395,6 @@
             const shareButton = document.getElementById('share-btn');
             const qrButton = document.getElementById('qr-btn');
             const flowchartButton = document.getElementById('flowchart-btn');
-            const variableDiagramButton = document.getElementById('variable-diagram-btn');
             const qrDialog = document.getElementById('qr-dialog');
             const qrCode = document.getElementById('qr-code');
             const qrMessage = document.getElementById('qr-message');
@@ -949,11 +945,7 @@
         def run_code(event):
             execute_code(show_diagram=True)
 
-        def show_variable_diagram(event):
-            execute_code(show_diagram=True)
-
         document["run-btn"].bind("click", run_code)
-        document["variable-diagram-btn"].bind("click", show_variable_diagram)
     </script>
 </body>
 </html>
