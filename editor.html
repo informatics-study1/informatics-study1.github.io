@@ -22,6 +22,7 @@
             --green: #198754;
             --sans: 'Noto Sans JP', Meiryo, sans-serif;
             --mono: Monaco, Menlo, 'Ubuntu Mono', Consolas, source-code-pro, monospace;
+            --editor-font-size: 18px;
         }
         * { box-sizing: border-box; }
         body {
@@ -107,8 +108,18 @@
             color: #444;
         }
         .tool-icon-button svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
-        #qr-btn svg { width: 22px; height: 22px; }
         .tool-icon-button.is-success { color: #198754; box-shadow: 0 0 0 2px rgba(25,135,84,.25), 0 0 2px 1px rgba(0,0,0,.25); }
+        .settings-dialog { position: fixed; inset: 0; z-index: 1200; display: none; place-items: center; padding: 20px; background: rgba(0,0,0,.45); }
+        .settings-dialog.is-open { display: grid; }
+        .settings-card { width: min(420px, 100%); padding: 22px; border-radius: 8px; background: #fff; box-shadow: 0 12px 35px rgba(0,0,0,.28); }
+        .settings-header { display: flex; align-items: center; margin-bottom: 22px; }
+        .settings-header h2 { margin: 0; font-size: 17px; }
+        .settings-close { margin-left: auto; padding: 3px 9px; box-shadow: none; font-size: 20px; }
+        .font-size-setting { display: grid; grid-template-columns: auto 1fr 62px; gap: 12px; align-items: center; }
+        .font-size-setting label { font-size: 14px; font-weight: 600; }
+        .font-size-setting input[type="range"] { width: 100%; accent-color: var(--accent); }
+        .font-size-output { color: #444; font: 14px var(--mono); text-align: right; }
+        .settings-help { margin: 12px 0 0; color: var(--muted); font-size: 12px; }
         .qr-dialog {
             position: fixed;
             inset: 0;
@@ -122,7 +133,7 @@
         .qr-dialog.is-open { display: flex; }
         .qr-card {
             position: relative;
-            width: min(320px, 100%);
+            width: min(520px, 100%);
             padding: 22px;
             border-radius: 8px;
             background: #fff;
@@ -130,7 +141,14 @@
             text-align: center;
         }
         .qr-card h2 { margin: 0 0 16px; font-size: 17px; }
-        .qr-code { display: flex; min-height: 220px; align-items: center; justify-content: center; }
+        .share-link-row { display: grid; grid-template-columns: auto minmax(0,1fr) auto; overflow: hidden; border: 1px solid #c4ccd5; border-radius: 6px; }
+        .share-link-label { display: flex; align-items: center; padding: 0 18px; color: #505b66; background: #eef1f4; border-right: 1px solid #c4ccd5; }
+        .share-url-link { min-width: 0; overflow: hidden; padding: 9px 12px; color: #4d5965; text-align: left; text-decoration: underline; text-overflow: ellipsis; white-space: nowrap; }
+        .share-copy-button { border-width: 0 0 0 1px; border-color: #c4ccd5; border-radius: 0; box-shadow: none; }
+        .qr-download-button { margin: 16px 0 6px; padding: 2px 8px; border: 0; color: #087ff5; background: transparent; box-shadow: none; font-size: 16px; }
+        .qr-download-button:hover { color: #0068d2; background: transparent; text-decoration: underline; }
+        .qr-download-button:disabled { color: #999; cursor: wait; }
+        .qr-code { display: flex; min-height: 260px; align-items: center; justify-content: center; }
         .qr-code img, .qr-code canvas { max-width: 100%; height: auto; }
         .qr-message { margin: 12px 0 0; color: var(--muted); font-size: 12px; }
         .qr-error { color: #b42318; }
@@ -217,7 +235,7 @@
             color: #9a9a9a;
             background: #f4f4f4;
             border-right: 1px solid #ddd;
-            font: 1.1em/1.2 var(--mono);
+            font: var(--editor-font-size)/1.2 var(--mono);
             font-weight: 300;
             text-align: right;
             user-select: none;
@@ -270,7 +288,7 @@
             color: #212529;
             background: transparent;
             pointer-events: none;
-            font: 1.1em/1.2 var(--mono);
+            font: var(--editor-font-size)/1.2 var(--mono);
             font-weight: 300;
             white-space: pre;
             tab-size: 4;
@@ -321,7 +339,7 @@
             background: transparent;
             caret-color: #222;
             tab-size: 4;
-            font: 1.1em/1.2 var(--mono);
+            font: var(--editor-font-size)/1.2 var(--mono);
             font-weight: 300;
             white-space: pre;
             overflow: auto;
@@ -357,8 +375,25 @@
         }
         .panel-header::before { content: '>_'; margin-right: 9px; color: var(--green); }
         .panel-hint { margin-left: auto; color: var(--muted); font-weight: 400; letter-spacing: 0; }
+        .panel-tabs { display: flex; align-self: stretch; gap: 2px; }
+        .panel-tab {
+            height: 100%;
+            padding: 0 10px;
+            border: 0;
+            border-bottom: 2px solid transparent;
+            border-radius: 0;
+            color: #777;
+            background: transparent;
+            box-shadow: none;
+            font: inherit;
+            letter-spacing: inherit;
+        }
+        .panel-tab:hover { color: #333; background: #f5f5f5; }
+        .panel-tab.is-active { color: #333; border-bottom-color: #4271ae; background: transparent; }
+        .output-view-stack { min-height: 0; overflow: hidden; }
         .output-container {
-            flex: 0 0 32%;
+            box-sizing: border-box;
+            height: 100%;
             min-height: 80px;
             padding: 14px 18px;
             overflow-y: auto;
@@ -369,8 +404,24 @@
             white-space: pre-wrap;
         }
         .output-container:empty::before { content: '実行待ち'; color: #6c757d; }
+        .converted-code-panel {
+            box-sizing: border-box;
+            height: 100%;
+            margin: 0;
+            padding: 14px 18px;
+            overflow: auto;
+            color: #212529;
+            background: #f7f7f7;
+            font: 14px/1.5 var(--mono);
+            white-space: pre;
+        }
+        .converted-code-panel:empty::before { color: #6c757d; }
+        #python-tab-output:empty::before { content: 'Pythonへ変換すると，表示されます'; }
+        #javascript-tab-output:empty::before { content: 'JavaScriptへ変換すると，表示されます'; }
+        [hidden] { display: none !important; }
         .variable-diagram-container {
-            flex: 1 1 auto;
+            box-sizing: border-box;
+            height: 100%;
             min-height: 0;
             overflow: auto;
             background: #fff;
@@ -385,6 +436,16 @@
         }
         .diagram-message { padding: 14px 18px; color: #6c757d; }
         .variable-diagram-container svg { display: block; }
+        .lower-view-stack { min-height: 0; overflow: hidden; }
+        .flowchart-container {
+            box-sizing: border-box;
+            height: 100%;
+            overflow: auto;
+            padding: 12px;
+            background: #fff;
+        }
+        .flowchart-container:empty::before { color: #6c757d; content: 'フローチャートタブを選択すると，表示されます'; }
+        .flowchart-container svg { display: block; margin: auto; }
         .execution-tooltip {
             position: fixed;
             z-index: 2000;
@@ -470,14 +531,9 @@
         <button id="share-btn" class="tool-icon-button" type="button" aria-label="リンクを共有" title="リンクを共有">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.1.1l2-2a5 5 0 0 0-7.1-7.1l-1.1 1.1"/><path d="M14 11a5 5 0 0 0-7.1-.1l-2 2A5 5 0 0 0 12 20l1.1-1.1"/></svg>
         </button>
-        <button id="qr-btn" class="tool-icon-button" type="button" aria-label="共有QRコードを表示" title="共有QRコードを表示">
-            <svg viewBox="0 0 22 22" aria-hidden="true"><defs><g id="qr-finder"><rect width="5" height="5" rx="1"/><rect x="2" y="2" width="1" height="1" fill="currentColor" stroke="none"/></g></defs><path d="M7 2H3a1 1 0 0 0-1 1v4M15 2h4a1 1 0 0 1 1 1v4M7 20H3a1 1 0 0 1-1-1v-4M15 20h4a1 1 0 0 0 1-1v-4"/><use href="#qr-finder" x="5" y="5"/><use href="#qr-finder" x="12" y="5"/><use href="#qr-finder" x="5" y="12"/><rect x="12" y="12" width="5" height="5" rx="1" fill="currentColor" stroke="none"/></svg>
+        <button id="settings-btn" class="tool-icon-button" type="button" aria-label="設定" title="設定">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.7 2.5h4.6l.6 2.2c.5.2 1 .5 1.5.9l2.2-.6 2.3 4-1.6 1.6a8 8 0 0 1 0 1.8l1.6 1.6-2.3 4-2.2-.6c-.5.4-1 .7-1.5.9l-.6 2.2H9.7l-.6-2.2c-.5-.2-1-.5-1.5-.9l-2.2.6-2.3-4 1.6-1.6a8 8 0 0 1 0-1.8L3.1 9l2.3-4 2.2.6c.5-.4 1-.7 1.5-.9l.6-2.2Z"/><circle cx="12" cy="11.5" r="3.5"/></svg>
         </button>
-        <button id="flowchart-btn" class="tool-icon-button" type="button" aria-label="フローチャートを別画面で表示" title="フローチャートを別画面で表示">
-            <svg viewBox="0 0 24 24" aria-hidden="true" stroke-width="2.4"><rect x="8" y="1.5" width="8" height="7" rx="2"/><path d="M12 8.5v4M5.5 15v-2.5h13V15"/><rect x="1.5" y="15" width="8" height="7.5" rx="2"/><rect x="14.5" y="15" width="8" height="7.5" rx="2"/></svg>
-        </button>
-        <button id="python-convert-btn" type="button" title="入力中のコードをPythonへ変換">Python変換</button>
-        <button id="javascript-convert-btn" type="button" title="入力中のコードをJavaScriptへ変換">JavaScript変換</button>
         <span class="app-version" aria-label="LastUpDate">LastUpDate: 2026/08/10</span>
     </div>
     <div class="editor-container">
@@ -491,16 +547,36 @@
         </div>
         <div id="pane-resizer" class="pane-resizer" role="separator" aria-label="エディタと実行結果の幅を調整" aria-orientation="vertical" aria-valuemin="20" aria-valuemax="80" aria-valuenow="50" tabindex="0"></div>
         <section class="viewer-panel" aria-label="実行結果ビューア">
-        <div class="panel-header">OUTPUT <span class="panel-hint">実行結果</span></div>
-        <div id="output-area" class="output-container"></div>
-        <div class="panel-header">VARIABLES <span class="panel-hint">変数と配列の対応図</span></div>
-        <div id="variable-diagram" class="variable-diagram-container"></div>
+        <div class="panel-header">
+            <div class="panel-tabs" role="tablist" aria-label="出力表示の切り替え">
+                <button id="output-tab" class="panel-tab is-active" type="button" role="tab" aria-selected="true" aria-controls="output-area">OUTPUT</button>
+                <button id="python-tab" class="panel-tab" type="button" role="tab" aria-selected="false" aria-controls="python-tab-output">PYTHON</button>
+                <button id="javascript-tab" class="panel-tab" type="button" role="tab" aria-selected="false" aria-controls="javascript-tab-output">JAVASCRIPT</button>
+            </div>
+            <span id="output-panel-hint" class="panel-hint">実行結果</span>
+        </div>
+        <div class="output-view-stack">
+            <div id="output-area" class="output-container" role="tabpanel" aria-labelledby="output-tab"></div>
+            <pre id="python-tab-output" class="converted-code-panel" role="tabpanel" aria-labelledby="python-tab" hidden></pre>
+            <pre id="javascript-tab-output" class="converted-code-panel" role="tabpanel" aria-labelledby="javascript-tab" hidden></pre>
+        </div>
+        <div class="panel-header">
+            <div class="panel-tabs" role="tablist" aria-label="解析表示の切り替え">
+                <button id="variables-tab" class="panel-tab is-active" type="button" role="tab" aria-selected="true" aria-controls="variable-diagram">VARIABLES</button>
+                <button id="flowchart-tab" class="panel-tab" type="button" role="tab" aria-selected="false" aria-controls="flowchart-view">FLOWCHART</button>
+            </div>
+            <span id="analysis-panel-hint" class="panel-hint">変数と配列の対応図</span>
+        </div>
+        <div class="lower-view-stack">
+            <div id="variable-diagram" class="variable-diagram-container" role="tabpanel" aria-labelledby="variables-tab"></div>
+            <div id="flowchart-view" class="flowchart-container" role="tabpanel" aria-labelledby="flowchart-tab" hidden></div>
+        </div>
         </section>
     </div>
     <footer class="statusbar">
         <span id="step-counter-status" class="step-counter-status"></span>
         <div class="status-right">
-            <span id="cursor-position">行 1、列 1</span>
+            <span id="cursor-position">行 1，列 1</span>
             <span>Spaces: 4</span>
             <span>UTF-8</span>
         </div>
@@ -510,12 +586,33 @@
     <div id="execution-tooltip" class="execution-tooltip" role="tooltip" aria-hidden="true"></div>
     <div id="line-explanation-tooltip" class="line-explanation-tooltip" role="tooltip" aria-hidden="true"></div>
 
+    <div id="settings-dialog" class="settings-dialog" role="dialog" aria-modal="true" aria-labelledby="settings-title" aria-hidden="true">
+        <div class="settings-card">
+            <div class="settings-header">
+                <h2 id="settings-title">設定</h2>
+                <button id="settings-close" class="settings-close" type="button" aria-label="閉じる">×</button>
+            </div>
+            <div class="font-size-setting">
+                <label for="font-size-range">フォントサイズ</label>
+                <input id="font-size-range" type="range" min="12" max="28" step="1" value="18">
+                <output id="font-size-output" class="font-size-output" for="font-size-range">18 px</output>
+            </div>
+            <p class="settings-help">エディタの文字と行番号の大きさを変更します。</p>
+        </div>
+    </div>
+
     <div id="qr-dialog" class="qr-dialog" role="dialog" aria-modal="true" aria-labelledby="qr-title" aria-hidden="true">
         <div class="qr-card">
             <button id="qr-close" class="qr-close" type="button" aria-label="閉じる">×</button>
-            <h2 id="qr-title">プログラム共有QRコード</h2>
+            <h2 id="qr-title">プログラムの共有</h2>
+            <div class="share-link-row">
+                <span class="share-link-label">リンク</span>
+                <a id="share-url-link" class="share-url-link" href="#" target="_blank" rel="noopener"></a>
+                <button id="share-copy-button" class="share-copy-button" type="button" disabled>コピー</button>
+            </div>
+            <button id="qr-download-button" class="qr-download-button" type="button" disabled>QRコードをダウンロード</button>
             <div id="qr-code" class="qr-code"></div>
-            <p id="qr-message" class="qr-message">スマートフォンのカメラで読み取ってください。</p>
+            <p id="qr-message" class="qr-message"></p>
         </div>
     </div>
 
@@ -536,6 +633,13 @@
     <script>
         (async () => {
             const editor = document.getElementById('code-editor');
+            const outputArea = document.getElementById('output-area');
+            const outputTab = document.getElementById('output-tab');
+            const pythonTab = document.getElementById('python-tab');
+            const pythonTabOutput = document.getElementById('python-tab-output');
+            const javascriptTab = document.getElementById('javascript-tab');
+            const javascriptTabOutput = document.getElementById('javascript-tab-output');
+            const outputPanelHint = document.getElementById('output-panel-hint');
             const stepButton = document.getElementById('step-btn');
             const autoStepButton = document.getElementById('auto-step-btn');
             const stepCounterStatus = document.getElementById('step-counter-status');
@@ -544,6 +648,10 @@
             const codeHighlight = document.getElementById('code-highlight');
             const cursorPosition = document.getElementById('cursor-position');
             const variableDiagram = document.getElementById('variable-diagram');
+            const variablesTab = document.getElementById('variables-tab');
+            const flowchartTab = document.getElementById('flowchart-tab');
+            const flowchartView = document.getElementById('flowchart-view');
+            const analysisPanelHint = document.getElementById('analysis-panel-hint');
             const executionTooltip = document.getElementById('execution-tooltip');
             const lineExplanationTooltip = document.getElementById('line-explanation-tooltip');
             const editorContainer = document.querySelector('.editor-container');
@@ -553,17 +661,53 @@
             const openFileInput = document.getElementById('open-file-input');
             const saveButton = document.getElementById('save-btn');
             const shareButton = document.getElementById('share-btn');
-            const qrButton = document.getElementById('qr-btn');
-            const flowchartButton = document.getElementById('flowchart-btn');
             const qrDialog = document.getElementById('qr-dialog');
             const qrCode = document.getElementById('qr-code');
             const qrMessage = document.getElementById('qr-message');
             const qrClose = document.getElementById('qr-close');
+            const shareUrlLink = document.getElementById('share-url-link');
+            const shareCopyButton = document.getElementById('share-copy-button');
+            const qrDownloadButton = document.getElementById('qr-download-button');
             const pythonDialog = document.getElementById('python-dialog');
             const pythonTitle = document.getElementById('python-title');
             const pythonCodeOutput = document.getElementById('python-code-output');
             const pythonCopy = document.getElementById('python-copy');
             const pythonClose = document.getElementById('python-close');
+            const settingsButton = document.getElementById('settings-btn');
+            const settingsDialog = document.getElementById('settings-dialog');
+            const settingsClose = document.getElementById('settings-close');
+            const fontSizeRange = document.getElementById('font-size-range');
+            const fontSizeOutput = document.getElementById('font-size-output');
+
+            const FONT_SIZE_STORAGE_KEY = 'editor-font-size';
+            const applyEditorFontSize = (size) => {
+                const safeSize = Math.min(28, Math.max(12, Number(size) || 18));
+                document.documentElement.style.setProperty('--editor-font-size', `${safeSize}px`);
+                fontSizeRange.value = String(safeSize);
+                fontSizeOutput.value = `${safeSize} px`;
+            };
+            const closeSettings = () => {
+                settingsDialog.classList.remove('is-open');
+                settingsDialog.setAttribute('aria-hidden', 'true');
+                settingsButton.focus();
+            };
+            settingsButton.addEventListener('click', () => {
+                settingsDialog.classList.add('is-open');
+                settingsDialog.setAttribute('aria-hidden', 'false');
+                fontSizeRange.focus();
+            });
+            settingsClose.addEventListener('click', closeSettings);
+            settingsDialog.addEventListener('click', (event) => {
+                if (event.target === settingsDialog) closeSettings();
+            });
+            settingsDialog.addEventListener('keydown', (event) => {
+                if (event.key === 'Escape') closeSettings();
+            });
+            fontSizeRange.addEventListener('input', () => {
+                applyEditorFontSize(fontSizeRange.value);
+                localStorage.setItem(FONT_SIZE_STORAGE_KEY, fontSizeRange.value);
+                updateActiveLine();
+            });
 
             const showButtonSuccess = (button, message) => {
                 const originalLabel = button.getAttribute('aria-label');
@@ -577,6 +721,50 @@
                     button.title = originalTitle;
                 }, 1500);
             };
+
+            const selectOutputView = (view) => {
+                const showPython = view === 'python';
+                const showJavaScript = view === 'javascript';
+                outputArea.hidden = showPython || showJavaScript;
+                pythonTabOutput.hidden = !showPython;
+                javascriptTabOutput.hidden = !showJavaScript;
+                outputTab.classList.toggle('is-active', !showPython && !showJavaScript);
+                pythonTab.classList.toggle('is-active', showPython);
+                javascriptTab.classList.toggle('is-active', showJavaScript);
+                outputTab.setAttribute('aria-selected', String(!showPython && !showJavaScript));
+                pythonTab.setAttribute('aria-selected', String(showPython));
+                javascriptTab.setAttribute('aria-selected', String(showJavaScript));
+                outputPanelHint.textContent = showPython
+                    ? 'Python変換結果'
+                    : showJavaScript ? 'JavaScript変換結果' : '実行結果';
+            };
+
+            window.showOutputTab = () => selectOutputView('output');
+            window.showPythonTab = (pythonCode) => {
+                pythonTabOutput.textContent = pythonCode;
+                selectOutputView('python');
+                pythonTabOutput.scrollTop = 0;
+                pythonTabOutput.scrollLeft = 0;
+            };
+            window.showJavaScriptTab = (javascriptCode) => {
+                javascriptTabOutput.textContent = javascriptCode;
+                selectOutputView('javascript');
+                javascriptTabOutput.scrollTop = 0;
+                javascriptTabOutput.scrollLeft = 0;
+            };
+            outputTab.addEventListener('click', () => selectOutputView('output'));
+
+            const selectAnalysisView = (view) => {
+                const showFlowchart = view === 'flowchart';
+                variableDiagram.hidden = showFlowchart;
+                flowchartView.hidden = !showFlowchart;
+                variablesTab.classList.toggle('is-active', !showFlowchart);
+                flowchartTab.classList.toggle('is-active', showFlowchart);
+                variablesTab.setAttribute('aria-selected', String(!showFlowchart));
+                flowchartTab.setAttribute('aria-selected', String(showFlowchart));
+                analysisPanelHint.textContent = showFlowchart ? '入力中のプログラムから生成' : '変数と配列の対応図';
+            };
+            variablesTab.addEventListener('click', () => selectAnalysisView('variables'));
 
             let autoStepTimer = null;
             let isAutoStepRunning = false;
@@ -738,46 +926,68 @@
                 if (event.target === pythonDialog) closePythonDialog();
             });
 
-            shareButton.addEventListener('click', async () => {
-                const shareUrl = await createShareUrl();
-                try {
-                    await copyText(shareUrl);
-                    showButtonSuccess(shareButton, 'リンクをコピーしました');
-                } catch (error) {
-                    window.prompt('このURLをコピーしてください', shareUrl);
-                    showButtonSuccess(shareButton, '共有リンクを作成しました');
-                }
-            });
-
+            let shareDialogOpener = shareButton;
             const closeQrDialog = () => {
                 qrDialog.classList.remove('is-open');
                 qrDialog.setAttribute('aria-hidden', 'true');
-                qrButton.focus();
+                shareDialogOpener?.focus();
             };
 
-            qrButton.addEventListener('click', async () => {
+            const openShareDialog = async (opener) => {
+                shareDialogOpener = opener;
                 qrDialog.classList.add('is-open');
                 qrDialog.setAttribute('aria-hidden', 'false');
                 qrCode.replaceChildren();
+                shareUrlLink.textContent = '共有リンクを作成しています…';
+                shareUrlLink.removeAttribute('href');
+                shareCopyButton.disabled = true;
+                qrDownloadButton.disabled = true;
                 qrMessage.classList.remove('qr-error');
                 qrMessage.textContent = 'QRコードを作成しています…';
                 try {
                     if (typeof QRCode === 'undefined') throw new Error('QR library unavailable');
                     const shareUrl = await createShareUrl();
+                    shareUrlLink.href = shareUrl;
+                    shareUrlLink.textContent = shareUrl;
+                    shareUrlLink.title = shareUrl;
+                    shareCopyButton.disabled = false;
                     new QRCode(qrCode, {
                         text: shareUrl,
-                        width: 220,
-                        height: 220,
+                        width: 260,
+                        height: 260,
                         colorDark: '#111111',
                         colorLight: '#ffffff',
                         correctLevel: QRCode.CorrectLevel.L
                     });
-                    qrMessage.textContent = 'スマートフォンのカメラで読み取ってください。';
+                    qrDownloadButton.disabled = false;
+                    qrMessage.textContent = 'URLをコピーするか，QRコードを読み取って共有できます。';
                     qrClose.focus();
                 } catch (error) {
                     qrMessage.classList.add('qr-error');
-                    qrMessage.textContent = 'コードが長すぎるか、QRコード機能を読み込めませんでした。';
+                    qrMessage.textContent = 'コードが長すぎるか，QRコード機能を読み込めませんでした。';
                 }
+            };
+
+            shareButton.addEventListener('click', (event) => openShareDialog(event.currentTarget));
+            shareCopyButton.addEventListener('click', async () => {
+                const shareUrl = shareUrlLink.getAttribute('href');
+                if (!shareUrl) return;
+                try {
+                    await copyText(shareUrl);
+                    showButtonSuccess(shareCopyButton, 'コピーしました');
+                } catch (error) {
+                    window.prompt('このURLをコピーしてください', shareUrl);
+                }
+            });
+            qrDownloadButton.addEventListener('click', () => {
+                const canvas = qrCode.querySelector('canvas');
+                const image = qrCode.querySelector('img');
+                const imageUrl = canvas?.toDataURL('image/png') || image?.src;
+                if (!imageUrl) return;
+                const downloadLink = document.createElement('a');
+                downloadLink.href = imageUrl;
+                downloadLink.download = 'program-share-qr.png';
+                downloadLink.click();
             });
             qrClose.addEventListener('click', closeQrDialog);
             qrDialog.addEventListener('click', (event) => {
@@ -827,7 +1037,7 @@
                     return `<g><text class="array-label" x="${arrayX}" y="${y + 11}">配列</text>${indices}${values}</g>`;
                 }).join('');
 
-                const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" role="img" aria-label="変数と配列の対応図"><style>text{font:15px Monaco,Menlo,Consolas,'Noto Sans JP',monospace;fill:#111;text-anchor:middle;dominant-baseline:middle}.variable-cell{fill:#e5eef8;stroke:#999}.variable-name{font-size:15px}.index-cell,.array-cell{fill:#fffec9;stroke:#999}.index{font-size:12px;fill:#777}.array-label{font:14px 'Noto Sans JP',Meiryo,sans-serif;fill:#777;text-anchor:start}.reference{fill:none;stroke:#268cf2;stroke-width:2;marker-end:url(#variable-arrow)}circle{fill:#111}</style><defs><marker id="variable-arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#268cf2"/></marker></defs><text x="${listX}" y="18" style="font:17px 'Noto Sans JP',Meiryo,sans-serif;text-anchor:start">変数リスト</text>${arrows}${variableRows}${arrayTables}</svg>`;
+                const svg = `<svg class="variable-map" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" role="img" aria-label="変数と配列の対応図"><style>.variable-map text{font:15px Monaco,Menlo,Consolas,'Noto Sans JP',monospace;fill:#111;text-anchor:middle;dominant-baseline:middle}.variable-map .variable-cell{fill:#e5eef8;stroke:#999}.variable-map .variable-name{font-size:15px}.variable-map .index-cell,.variable-map .array-cell{fill:#fffec9;stroke:#999}.variable-map .index{font-size:12px;fill:#777}.variable-map .array-label{font:14px 'Noto Sans JP',Meiryo,sans-serif;fill:#777;text-anchor:start}.variable-map .reference{fill:none;stroke:#268cf2;stroke-width:2;marker-end:url(#variable-arrow)}.variable-map circle{fill:#111}</style><defs><marker id="variable-arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#268cf2"/></marker></defs><text x="${listX}" y="18" style="font:17px 'Noto Sans JP',Meiryo,sans-serif;text-anchor:start">変数リスト</text>${arrows}${variableRows}${arrayTables}</svg>`;
                 const executionRows = data.execution ?? [];
                 const chartX = 245;
                 const chartTop = 62;
@@ -860,6 +1070,7 @@
                     ? `<svg class="execution-chart" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${chartSvgWidth} ${chartSvgHeight}" width="${chartSvgWidth}" height="${chartSvgHeight}" role="img" aria-label="プログラム各行の実行回数"><style>.chart-title{font:17px 'Noto Sans JP',Meiryo,sans-serif;text-anchor:start;dominant-baseline:middle}.legend-label,.chart-label,.axis{font:12px 'Noto Sans JP',Meiryo,sans-serif;fill:#666;dominant-baseline:middle}.legend-label{text-anchor:start}.chart-label{text-anchor:end}.axis{text-anchor:start}.grid{stroke:#ddd;stroke-width:1}.true-bar{fill:#ffb545}.false-bar{fill:#a54c97}.count-bar{fill:#a4cf5a}.data-bar{cursor:default}.data-bar:hover{filter:brightness(.9);stroke:#555;stroke-width:1}</style><text class="chart-title" x="20" y="19">実行回数</text><g transform="translate(225 13)"><rect class="true-bar" width="34" height="14"/><text class="legend-label" x="44" y="7">真の回数</text><rect class="false-bar" x="112" width="34" height="14"/><text class="legend-label" x="156" y="7">偽の回数</text><rect class="count-bar" x="224" width="34" height="14"/><text class="legend-label" x="268" y="7">実行回数</text></g>${grid}${rowGrid}${bars}</svg>`
                     : '';
                 variableDiagram.innerHTML = svg + executionSvg;
+                selectAnalysisView('variables');
                 variableDiagram.scrollTo({ top: 0, left: 0 });
             };
 
@@ -939,14 +1150,12 @@
                 return `<svg id="flowchart" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" role="img" aria-label="プログラムのフローチャート"><style>.connector{fill:none;stroke:#777;stroke-width:1.5;marker-end:url(#arrow)}rect,polygon{fill:#fff;stroke:#555;stroke-width:1.5}.condition{fill:#fff8e7;stroke:#a66b00}.loop{fill:#eef7ed;stroke:#488a42}.branch{fill:#f8f4ff;stroke:#8959a8}.terminal{fill:#e9f5ff;stroke:#428bca}.comment{fill:#f1f1f1;stroke:#999;stroke-dasharray:5 3}text{font:14px Monaco,Menlo,Consolas,monospace;text-anchor:middle;dominant-baseline:middle}</style><defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#777"/></marker></defs>${connectors}${shapes}</svg>`;
             };
 
-            flowchartButton.addEventListener('click', () => {
-                const svg = createFlowchartSvg(editor.value);
-                const page = `<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>フローチャート</title><style>body{margin:0;padding:24px;background:#f5f6f8;color:#333;font-family:'Noto Sans JP',Meiryo,sans-serif}header{position:sticky;top:0;z-index:2;display:flex;align-items:center;gap:16px;padding:12px 16px;background:#fff;border:1px solid #ddd;border-radius:8px;box-shadow:0 2px 8px #0001}h1{margin:0;font-size:18px}.actions{margin-left:auto;display:flex;gap:8px}.actions button{padding:7px 14px;border:1px solid #bbb;border-radius:5px;background:#fff;cursor:pointer}.canvas{margin-top:18px;overflow:auto;background:#fff;border:1px solid #ddd;border-radius:8px}svg{display:block;margin:auto}@media print{body{padding:0;background:#fff}header{display:none}.canvas{margin:0;border:0}}</style></head><body><header><h1>フローチャート</h1><span>入力中のプログラムから生成</span><div class="actions"><button onclick="downloadFlowchart()">PNG保存</button><button onclick="window.print()">印刷</button></div></header><div class="canvas">${svg}</div>${'<script>'}function downloadFlowchart(){const svg=document.getElementById('flowchart');const width=svg.viewBox.baseVal.width;const height=svg.viewBox.baseVal.height;const scale=Math.min(2,16000/width,16000/height);const source=new XMLSerializer().serializeToString(svg);const image=new Image();const imageUrl=URL.createObjectURL(new Blob([source],{type:'image/svg+xml;charset=utf-8'}));image.onload=()=>{const canvas=document.createElement('canvas');canvas.width=Math.round(width*scale);canvas.height=Math.round(height*scale);const context=canvas.getContext('2d');context.fillStyle='#fff';context.fillRect(0,0,canvas.width,canvas.height);context.drawImage(image,0,0,canvas.width,canvas.height);URL.revokeObjectURL(imageUrl);const link=document.createElement('a');link.download='flowchart.png';link.href=canvas.toDataURL('image/png');link.click()};image.onerror=()=>{URL.revokeObjectURL(imageUrl);alert('PNG画像を作成できませんでした。')};image.src=imageUrl}${'</scr' + 'ipt>'}</body></html>`;
-                const pageUrl = URL.createObjectURL(new Blob([page], { type: 'text/html;charset=utf-8' }));
-                const chartWindow = window.open(pageUrl, '_blank');
-                if (!chartWindow) window.alert('別画面を開けませんでした。ポップアップを許可してください。');
-                window.setTimeout(() => URL.revokeObjectURL(pageUrl), 60000);
-            });
+            const showFlowchart = () => {
+                flowchartView.innerHTML = createFlowchartSvg(editor.value);
+                selectAnalysisView('flowchart');
+                flowchartView.scrollTo({ top: 0, left: 0 });
+            };
+            flowchartTab.addEventListener('click', showFlowchart);
 
             const setEditorWidth = (percent) => {
                 const safePercent = Math.min(80, Math.max(20, percent));
@@ -1051,23 +1260,23 @@
                 const text = source.trim();
                 if (!text) return null;
                 if (text.startsWith('#') || text.startsWith('//')) {
-                    return { title: `${lineNumber}行目：コメント`, description: 'プログラムを説明するための行であり、実行時の処理には影響しない。' };
+                    return { title: `${lineNumber}行目：コメント`, description: 'プログラムを説明するための行であり，実行時の処理には影響しない。' };
                 }
 
                 let match = text.match(/^もし\s+(.+)\s+ならば:$/);
-                if (match) return { title: `${lineNumber}行目：条件分岐`, description: `条件「${match[1]}」が真の場合に、インデントされた処理を実行する条件分岐である。` };
+                if (match) return { title: `${lineNumber}行目：条件分岐`, description: `条件「${match[1]}」が真の場合に，インデントされた処理を実行する条件分岐である。` };
                 match = text.match(/^そうでなくもし\s+(.+)\s+ならば:$/);
-                if (match) return { title: `${lineNumber}行目：追加の条件分岐`, description: `それまでの条件が偽であり、条件「${match[1]}」が真の場合に処理を実行する。` };
+                if (match) return { title: `${lineNumber}行目：追加の条件分岐`, description: `それまでの条件が偽であり，条件「${match[1]}」が真の場合に処理を実行する条件分岐である。` };
                 if (text === 'そうでなければ:') {
-                    return { title: `${lineNumber}行目：それ以外の分岐`, description: 'それまでの条件がすべて偽だった場合に、インデントされた処理を実行する分岐である。' };
+                    return { title: `${lineNumber}行目：それ以外の分岐`, description: 'それまでの条件がすべて偽だった場合に，インデントされた処理を実行する分岐である。' };
                 }
 
                 match = text.match(/^(.+)\s*を\s*(.+)\s*から\s*(.+)\s*まで\s*(.+)\s*ずつ増やしながら繰り返す:$/);
-                if (match) return { title: `${lineNumber}行目：順次繰り返し`, description: `変数「${match[1].trim()}」を${match[2]}から${match[3]}まで${match[4]}ずつ増やし、範囲内の処理を繰り返す。` };
+                if (match) return { title: `${lineNumber}行目：順次繰り返し`, description: `繰り返し変数「${match[1].trim()}」を${match[2]}から${match[3]}まで${match[4]}ずつ増やし，範囲内の処理を繰り返す。` };
                 match = text.match(/^(.+)\s*を\s*(.+)\s*から\s*(.+)\s*まで\s*(.+)\s*ずつ減らしながら繰り返す:$/);
-                if (match) return { title: `${lineNumber}行目：順次繰り返し`, description: `変数「${match[1].trim()}」を${match[2]}から${match[3]}まで${match[4]}ずつ減らし、範囲内の処理を繰り返す。` };
+                if (match) return { title: `${lineNumber}行目：順次繰り返し`, description: `繰り返し変数「${match[1].trim()}」を${match[2]}から${match[3]}まで${match[4]}ずつ減らし，範囲内の処理を繰り返す。` };
                 match = text.match(/^(.+)\s*の間繰り返す:$/);
-                if (match) return { title: `${lineNumber}行目：条件繰り返し`, description: `条件「${match[1]}」が真である間、インデントされた処理を繰り返す。` };
+                if (match) return { title: `${lineNumber}行目：条件繰り返し`, description: `条件「${match[1]}」が真である間，インデントされた処理を繰り返す。` };
 
                 match = text.match(/^表示する\((.*)\)$/);
                 if (match) return { title: `${lineNumber}行目：表示`, description: `「${match[1]}」の値を実行結果へ表示する処理である。` };
@@ -1076,10 +1285,21 @@
                     const target = match[1].trim();
                     const expression = match[2].trim();
                     const arrayElement = target.match(/^(.+?)\[(.+)\]$/);
+                    const isNumericLiteral = /^-?\d+(?:\.\d+)?$/.test(expression);
+                    const isStringLiteral = /^(?:"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*')$/.test(expression);
+                    const isLiteral = isNumericLiteral
+                        || /^(?:true|false|True|False|None)$/.test(expression)
+                        || isStringLiteral;
+                    const requiresCalculation = !isLiteral && /(?:[+\-*/%()]|==|!=|<=|>=|<|>)/.test(expression);
+                    const valueType = isNumericLiteral ? '数値' : isStringLiteral ? '文字列' : '値';
+                    const displayedValue = isStringLiteral ? expression.slice(1, -1) : expression;
+                    const typeSuffix = isNumericLiteral ? '（数値）' : isStringLiteral ? '（文字列）' : '';
                     if (arrayElement) {
                         return {
-                            title: `${lineNumber}行目：配列要素への代入`,
-                            description: `式「${expression}」を計算し、その結果を配列「${arrayElement[1].trim()}」の添字「${arrayElement[2].trim()}」の要素へ代入する。`
+                            title: `${lineNumber}行目：配列要素への代入${typeSuffix}`,
+                            description: requiresCalculation
+                                ? `式「${expression}」を計算し，その結果を配列「${arrayElement[1].trim()}」の添字「${arrayElement[2].trim()}」の要素へ代入する。`
+                                : `${valueType}「${displayedValue}」を配列「${arrayElement[1].trim()}」の添字「${arrayElement[2].trim()}」の要素へ代入する。`
                         };
                     }
                     if (expression.startsWith('[') && expression.endsWith(']')) {
@@ -1089,8 +1309,10 @@
                         };
                     }
                     return {
-                        title: `${lineNumber}行目：変数への代入`,
-                        description: `式「${expression}」を計算し、その結果を変数「${target}」へ代入する。`
+                        title: `${lineNumber}行目：変数への代入${typeSuffix}`,
+                        description: requiresCalculation
+                            ? `式「${expression}」を計算し，その結果を変数「${target}」へ代入する。`
+                            : `${valueType}「${displayedValue}」を変数「${target}」へ代入する。`
                     };
                 }
 
@@ -1167,7 +1389,7 @@
             const updateCursorPosition = () => {
                 const beforeCursor = editor.value.slice(0, editor.selectionStart);
                 const lines = beforeCursor.split('\n');
-                cursorPosition.textContent = `行 ${lines.length}、列 ${lines.at(-1).length + 1}`;
+                cursorPosition.textContent = `行 ${lines.length}，列 ${lines.at(-1).length + 1}`;
                 updateActiveLine();
             };
 
@@ -1234,6 +1456,7 @@
                     console.warn('共有URLからプログラムを読み込めませんでした。', error);
                 }
             }
+            applyEditorFontSize(localStorage.getItem(FONT_SIZE_STORAGE_KEY));
             updateLineNumbers();
             updateHighlight();
             updateCursorPosition();
@@ -1252,7 +1475,7 @@
         def transpile_to_python(code, instrument=True):
             """共通テスト仕様のプログラムをPythonコードに変換"""
             lines = code.split('\n')
-            # 乱数や数学関数を使用可能にするため、標準モジュールを事前にインポート
+            # 乱数や数学関数を使用可能にするため，標準モジュールを事前にインポート
             python_lines = ["import random", "import math"]
             
             for line_number, line in enumerate(lines, start=1):
@@ -1496,6 +1719,7 @@
         step_state = {"code": None, "target": 0, "finished": False, "random_state": None}
 
         def execute_code(show_diagram=False, step_limit=None):
+            window.showOutputTab()
             document["output-area"].text = ""
             sys.stdout = io.StringIO()
             sys.stderr = io.StringIO()
@@ -1590,17 +1814,17 @@
         def convert_to_python(event):
             raw_code = document["code-editor"].value
             python_code = transpile_to_python(raw_code, instrument=False)
-            window.showCodeConversion(python_code, "Python変換結果")
+            window.showPythonTab(python_code)
 
         def convert_to_javascript(event):
             raw_code = document["code-editor"].value
             javascript_code = transpile_to_javascript(raw_code)
-            window.showCodeConversion(javascript_code, "JavaScript変換結果")
+            window.showJavaScriptTab(javascript_code)
 
         document["run-btn"].bind("click", run_code)
         document["step-btn"].bind("click", step_code)
-        document["python-convert-btn"].bind("click", convert_to_python)
-        document["javascript-convert-btn"].bind("click", convert_to_javascript)
+        document["python-tab"].bind("click", convert_to_python)
+        document["javascript-tab"].bind("click", convert_to_javascript)
     </script>
 </body>
 </html>
