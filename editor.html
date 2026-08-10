@@ -134,6 +134,45 @@
         .qr-message { margin: 12px 0 0; color: var(--muted); font-size: 12px; }
         .qr-error { color: #b42318; }
         .qr-close { position: absolute; top: 8px; right: 8px; padding: 3px 9px; box-shadow: none; font-size: 20px; }
+        .python-dialog {
+            position: fixed;
+            inset: 0;
+            z-index: 1100;
+            display: none;
+            place-items: center;
+            padding: 24px;
+            background: rgba(0,0,0,.42);
+        }
+        .python-dialog.is-open { display: grid; }
+        .python-card {
+            display: flex;
+            width: min(820px, 94vw);
+            height: min(650px, 82vh);
+            flex-direction: column;
+            overflow: hidden;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 12px 35px rgba(0,0,0,.28);
+        }
+        .python-card-header { display: flex; align-items: center; padding: 12px 16px; border-bottom: 1px solid #ddd; }
+        .python-card-header h2 { margin: 0; font-size: 17px; }
+        .python-card-actions { display: flex; gap: 8px; margin-left: auto; }
+        .python-code-output {
+            position: static;
+            z-index: auto;
+            flex: 1;
+            width: 100%;
+            height: auto;
+            padding: 16px 18px;
+            border: 0;
+            color: #222;
+            background: #f7f7f7;
+            caret-color: #222;
+            font: 14px/1.5 var(--mono);
+            white-space: pre;
+            resize: none;
+        }
+        .python-code-output::selection { color: #222; background: rgba(66,139,202,.28); }
         button:active { transform: translateY(1px); }
         .editor-container { display: flex; flex: 1; min-height: 0; flex-direction: row; gap: 0; padding-bottom: 6px; }
         .editor-shell {
@@ -419,6 +458,8 @@
         <button id="flowchart-btn" class="tool-icon-button" type="button" aria-label="フローチャートを別画面で表示" title="フローチャートを別画面で表示">
             <svg viewBox="0 0 24 24" aria-hidden="true" stroke-width="2.4"><rect x="8" y="1.5" width="8" height="7" rx="2"/><path d="M12 8.5v4M5.5 15v-2.5h13V15"/><rect x="1.5" y="15" width="8" height="7.5" rx="2"/><rect x="14.5" y="15" width="8" height="7.5" rx="2"/></svg>
         </button>
+        <button id="python-convert-btn" type="button" title="入力中のコードをPythonへ変換">Python変換</button>
+        <button id="javascript-convert-btn" type="button" title="入力中のコードをJavaScriptへ変換">JavaScript変換</button>
         <span class="app-version" aria-label="LastUpDate">LastUpDate: 2026/08/10</span>
     </div>
     <div class="editor-container">
@@ -459,6 +500,19 @@
         </div>
     </div>
 
+    <div id="python-dialog" class="python-dialog" role="dialog" aria-modal="true" aria-labelledby="python-title" aria-hidden="true">
+        <div class="python-card">
+            <div class="python-card-header">
+                <h2 id="python-title">Python変換結果</h2>
+                <div class="python-card-actions">
+                    <button id="python-copy" type="button">コピー</button>
+                    <button id="python-close" type="button">閉じる</button>
+                </div>
+            </div>
+            <textarea id="python-code-output" class="python-code-output" readonly aria-label="Python変換結果"></textarea>
+        </div>
+    </div>
+
     <!-- 変換・実行エンジン -->
     <script>
         (async () => {
@@ -485,6 +539,11 @@
             const qrCode = document.getElementById('qr-code');
             const qrMessage = document.getElementById('qr-message');
             const qrClose = document.getElementById('qr-close');
+            const pythonDialog = document.getElementById('python-dialog');
+            const pythonTitle = document.getElementById('python-title');
+            const pythonCodeOutput = document.getElementById('python-code-output');
+            const pythonCopy = document.getElementById('python-copy');
+            const pythonClose = document.getElementById('python-close');
 
             const showButtonSuccess = (button, message) => {
                 const originalLabel = button.getAttribute('aria-label');
@@ -631,6 +690,34 @@
                 if (!copied) throw new Error('Clipboard copy failed');
             };
 
+            const closePythonDialog = () => {
+                pythonDialog.classList.remove('is-open');
+                pythonDialog.setAttribute('aria-hidden', 'true');
+            };
+
+            window.showCodeConversion = (convertedCode, title) => {
+                pythonTitle.textContent = title;
+                pythonCodeOutput.value = convertedCode;
+                pythonDialog.classList.add('is-open');
+                pythonDialog.setAttribute('aria-hidden', 'false');
+                pythonCodeOutput.scrollTop = 0;
+                pythonCodeOutput.scrollLeft = 0;
+                pythonCodeOutput.focus();
+            };
+
+            pythonCopy.addEventListener('click', async () => {
+                try {
+                    await copyText(pythonCodeOutput.value);
+                    showButtonSuccess(pythonCopy, 'コピーしました');
+                } catch (error) {
+                    window.prompt('変換結果をコピーしてください', pythonCodeOutput.value);
+                }
+            });
+            pythonClose.addEventListener('click', closePythonDialog);
+            pythonDialog.addEventListener('click', (event) => {
+                if (event.target === pythonDialog) closePythonDialog();
+            });
+
             shareButton.addEventListener('click', async () => {
                 const shareUrl = await createShareUrl();
                 try {
@@ -678,6 +765,7 @@
             });
             document.addEventListener('keydown', (event) => {
                 if (event.key === 'Escape' && qrDialog.classList.contains('is-open')) closeQrDialog();
+                if (event.key === 'Escape' && pythonDialog.classList.contains('is-open')) closePythonDialog();
             });
 
             window.showVariableDiagram = (jsonText) => {
@@ -1053,7 +1141,7 @@
         import json
         import random
 
-        def transpile_to_python(code):
+        def transpile_to_python(code, instrument=True):
             """共通テスト仕様のプログラムをPythonコードに変換"""
             lines = code.split('\n')
             # 乱数や数学関数を使用可能にするため、標準モジュールを事前にインポート
@@ -1065,7 +1153,7 @@
                 
                 # 空行やコメント（// や #）はそのまま
                 if not l or l.startswith(("#", "//")):
-                    python_lines.append(line)
+                    python_lines.append(" " * indent + ("#" + l[2:] if l.startswith("//") else l))
                     continue
 
                 # 代入演算子「←」の変換
@@ -1102,21 +1190,25 @@
                 m_for = re.match(r'^(.+)\s*を\s*(.+)\s*から\s*(.+)\s*まで\s*(.+)\s*ずつ増やしながら繰り返す:$', l)
                 if m_for:
                     var, start, end, step = m_for.groups()
-                    l = f"for {var} in __track_iter({line_number}, range({start}, ({end}) + 1, {step})):"
+                    loop_range = f"range({start}, ({end}) + 1, {step})"
+                    l = f"for {var} in __track_iter({line_number}, {loop_range}):" if instrument else f"for {var} in {loop_range}:"
                 
                 # 繰り返しの変換（減少）
                 m_for_dec = re.match(r'^(.+)\s*を\s*(.+)\s*から\s*(.+)\s*まで\s*(.+)\s*ずつ減らしながら繰り返す:$', l)
                 if m_for_dec:
                     var, start, end, step = m_for_dec.groups()
-                    l = f"for {var} in __track_iter({line_number}, range({start}, ({end}) - 1, -({step}))):"
+                    loop_range = f"range({start}, ({end}) - 1, -({step}))"
+                    l = f"for {var} in __track_iter({line_number}, {loop_range}):" if instrument else f"for {var} in {loop_range}:"
 
                 # 繰り返しの変換（条件ループ）
                 m_while = re.match(r'^(.+)\s*の間繰り返す:$', l)
                 if m_while:
                     cond = m_while.group(1)
-                    l = f"while __track_condition({line_number}, {cond}):"
+                    l = f"while __track_condition({line_number}, {cond}):" if instrument else f"while {cond}:"
 
-                if l.startswith("if ") and l.endswith(":"):
+                if not instrument:
+                    python_lines.append(" " * indent + l)
+                elif l.startswith("if ") and l.endswith(":"):
                     condition = l[3:-1]
                     l = f"if __track_condition({line_number}, {condition}):"
                     python_lines.append(" " * indent + l)
@@ -1135,6 +1227,98 @@
                     python_lines.append(" " * indent + l)
             
             return "\n".join(python_lines)
+
+        def transpile_to_javascript(code):
+            def convert_expression(expression):
+                expression = expression.replace("←", "=")
+                expression = expression.replace(" かつ ", " && ")
+                expression = expression.replace(" または ", " || ")
+                expression = expression.replace(" でない ", " !")
+                expression = re.sub(r'\bTrue\b', 'true', expression)
+                expression = re.sub(r'\bFalse\b', 'false', expression)
+                expression = re.sub(r'\bNone\b', 'null', expression)
+                expression = expression.replace("乱数()", "Math.random()")
+                expression = re.sub(
+                    r'整数乱数\(([^,()]+),\s*([^()]+)\)',
+                    r'Math.floor(Math.random() * ((\2) - (\1) + 1)) + (\1)',
+                    expression
+                )
+                expression = re.sub(r'要素数\(([^()]+)\)', r'(\1).length', expression)
+                expression = re.sub(r'整数\(([^()]+)\)', r'Math.trunc(\1)', expression)
+                return expression
+
+            javascript_lines = []
+            block_indents = []
+            declared_names = set()
+
+            for raw_line in code.split('\n'):
+                indent = len(raw_line) - len(raw_line.lstrip())
+                text = raw_line.strip()
+                if not text:
+                    javascript_lines.append("")
+                    continue
+
+                is_branch = text.startswith("そうでなくもし ") or text == "そうでなければ:"
+                while block_indents and (indent < block_indents[-1] or (indent == block_indents[-1] and not is_branch)):
+                    javascript_lines.append(" " * block_indents.pop() + "}")
+
+                if text.startswith(("#", "//")):
+                    comment = text[1:] if text.startswith("#") else text[2:]
+                    javascript_lines.append(" " * indent + "//" + comment)
+                    continue
+
+                match_if = re.match(r'^もし\s+(.+)\s+ならば:$', text)
+                match_elif = re.match(r'^そうでなくもし\s+(.+)\s+ならば:$', text)
+                match_for = re.match(r'^(.+)\s*を\s*(.+)\s*から\s*(.+)\s*まで\s*(.+)\s*ずつ増やしながら繰り返す:$', text)
+                match_for_dec = re.match(r'^(.+)\s*を\s*(.+)\s*から\s*(.+)\s*まで\s*(.+)\s*ずつ減らしながら繰り返す:$', text)
+                match_while = re.match(r'^(.+)\s*の間繰り返す:$', text)
+
+                if match_if:
+                    condition = convert_expression(match_if.group(1))
+                    javascript_lines.append(" " * indent + f"if ({condition}) {{")
+                    block_indents.append(indent)
+                elif match_elif:
+                    if block_indents and block_indents[-1] == indent:
+                        block_indents.pop()
+                    condition = convert_expression(match_elif.group(1))
+                    javascript_lines.append(" " * indent + f"}} else if ({condition}) {{")
+                    block_indents.append(indent)
+                elif text == "そうでなければ:":
+                    if block_indents and block_indents[-1] == indent:
+                        block_indents.pop()
+                    javascript_lines.append(" " * indent + "} else {")
+                    block_indents.append(indent)
+                elif match_for:
+                    variable, start, end, step = match_for.groups()
+                    variable = variable.strip()
+                    declared_names.add(variable)
+                    javascript_lines.append(" " * indent + f"for (let {variable} = {convert_expression(start)}; {variable} <= {convert_expression(end)}; {variable} += {convert_expression(step)}) {{")
+                    block_indents.append(indent)
+                elif match_for_dec:
+                    variable, start, end, step = match_for_dec.groups()
+                    variable = variable.strip()
+                    declared_names.add(variable)
+                    javascript_lines.append(" " * indent + f"for (let {variable} = {convert_expression(start)}; {variable} >= {convert_expression(end)}; {variable} -= {convert_expression(step)}) {{")
+                    block_indents.append(indent)
+                elif match_while:
+                    condition = convert_expression(match_while.group(1))
+                    javascript_lines.append(" " * indent + f"while ({condition}) {{")
+                    block_indents.append(indent)
+                elif text.startswith("表示する(") and text.endswith(")"):
+                    arguments = convert_expression(text[len("表示する("):-1])
+                    javascript_lines.append(" " * indent + f"console.log({arguments});")
+                else:
+                    statement = convert_expression(text)
+                    assignment = re.match(r'^([^\W\d]\w*)\s*=\s*(.+)$', statement)
+                    if assignment and assignment.group(1) not in declared_names:
+                        declared_names.add(assignment.group(1))
+                        statement = f"let {assignment.group(1)} = {assignment.group(2)}"
+                    javascript_lines.append(" " * indent + statement.rstrip(";") + ";")
+
+            while block_indents:
+                javascript_lines.append(" " * block_indents.pop() + "}")
+
+            return "\n".join(javascript_lines)
 
         def create_execution_stats(code):
             stats = {}
@@ -1295,8 +1479,20 @@
             stats_json = json.dumps(result["last_stats"], ensure_ascii=False)
             window.showStepPosition(result["last_line"], result["finished"], stats_json)
 
+        def convert_to_python(event):
+            raw_code = document["code-editor"].value
+            python_code = transpile_to_python(raw_code, instrument=False)
+            window.showCodeConversion(python_code, "Python変換結果")
+
+        def convert_to_javascript(event):
+            raw_code = document["code-editor"].value
+            javascript_code = transpile_to_javascript(raw_code)
+            window.showCodeConversion(javascript_code, "JavaScript変換結果")
+
         document["run-btn"].bind("click", run_code)
         document["step-btn"].bind("click", step_code)
+        document["python-convert-btn"].bind("click", convert_to_python)
+        document["javascript-convert-btn"].bind("click", convert_to_javascript)
     </script>
 </body>
 </html>
