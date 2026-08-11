@@ -1680,7 +1680,7 @@
                 return errors;
             };
 
-            const tokenPattern = /("(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\/\/[^\n]*|#[^\n]*|【外部からの入力】|\b\d+(?:\.\d+)?\b|そうでなくもし|そうでなければ|ずつ増やしながら繰り返す|ずつ減らしながら繰り返す|の間繰り返す|整数乱数|要素数|整数|乱数|表示する|もし|ならば|かつ|または|でない|から|まで|を|←|==|!=|<=|>=|=|[+\-*/%<>]=?)/g;
+            const tokenPattern = /("(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\/\/[^\n]*|#[^\n]*|【外部からの入力】|\b\d+(?:\.\d+)?\b|そうでなくもし|そうでなければ|ずつ増やしながら繰り返す|ずつ減らしながら繰り返す|の間繰り返す|整数乱数|最大値|最小値|要素数|整数|乱数|表示する|もし|ならば|かつ|または|でない|から|まで|を|←|==|!=|<=|>=|=|[+\-*/%<>]=?)/g;
 
             const highlightSyntax = (source) => {
                 let lastIndex = 0;
@@ -1692,7 +1692,7 @@
                     if (token.startsWith('"') || token.startsWith("'")) tokenClass = 'token-string';
                     else if (token.startsWith('//') || token.startsWith('#')) tokenClass = 'token-comment';
                     else if (/^\d/.test(token)) tokenClass = 'token-number';
-                    else if (['表示する', '要素数', '整数', '乱数', '整数乱数', '【外部からの入力】'].includes(token)) tokenClass = 'token-function';
+                    else if (['表示する', '要素数', '整数', '乱数', '整数乱数', '最大値', '最小値', '【外部からの入力】'].includes(token)) tokenClass = 'token-function';
                     else if (/^(←|==|!=|<=|>=|=|[+\-*/%<>]=?)$/.test(token)) tokenClass = 'token-operator';
                     html += `<span class="${tokenClass}">${escapeHtml(token)}</span>`;
                     lastIndex = match.index + token.length;
@@ -2215,6 +2215,10 @@
                 # 要素数関数の変換
                 l = l.replace("要素数(", "len(")
 
+                # 最大値・最小値関数の変換
+                l = l.replace("最大値(", "max(")
+                l = l.replace("最小値(", "min(")
+
                 # 値を整数に変換
                 l = l.replace("整数(", "int(")
 
@@ -2292,6 +2296,8 @@
                     expression
                 )
                 expression = re.sub(r'要素数\(([^()]+)\)', r'(\1).length', expression)
+                expression = expression.replace("最大値(", "Math.max(")
+                expression = expression.replace("最小値(", "Math.min(")
                 expression = re.sub(r'整数\(([^()]+)\)', r'Math.trunc(\1)', expression)
                 return expression
 
