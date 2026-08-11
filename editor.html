@@ -667,7 +667,8 @@
                 position: fixed;
                 z-index: 2100;
                 right: 8px;
-                bottom: max(8px, env(safe-area-inset-bottom));
+                top: 8px;
+                bottom: auto;
                 left: 8px;
                 display: flex;
                 max-height: min(48dvh, 360px);
@@ -2112,11 +2113,25 @@
                 return { title: `${lineNumber}行目：処理`, description: '式または関数呼び出しを実行する処理である。' };
             };
 
+            const positionMobileExplanationPanel = () => {
+                if (!mobileExplanationPanel.classList.contains('is-visible')) return;
+                const viewport = window.visualViewport;
+                const viewportTop = viewport?.offsetTop ?? 0;
+                const viewportHeight = viewport?.height ?? window.innerHeight;
+                const safeGap = 8;
+                const top = Math.max(
+                    viewportTop + safeGap,
+                    viewportTop + viewportHeight - mobileExplanationPanel.offsetHeight - safeGap
+                );
+                mobileExplanationPanel.style.top = `${top}px`;
+            };
+
             const hideLineExplanation = () => {
                 lineExplanationTooltip.classList.remove('is-visible');
                 lineExplanationTooltip.setAttribute('aria-hidden', 'true');
                 mobileExplanationPanel.classList.remove('is-visible');
                 mobileExplanationPanel.setAttribute('aria-hidden', 'true');
+                mobileExplanationPanel.style.top = '';
             };
 
             const showLineExplanationAt = (event) => {
@@ -2154,6 +2169,7 @@
                     window.setTimeout(() => {
                         mobileExplanationPanel.classList.add('is-visible');
                         mobileExplanationPanel.setAttribute('aria-hidden', 'false');
+                        requestAnimationFrame(positionMobileExplanationPanel);
                     }, 120);
                     return;
                 }
@@ -2187,6 +2203,8 @@
                 hideLineExplanation();
                 editor.focus();
             });
+            window.visualViewport?.addEventListener('resize', positionMobileExplanationPanel);
+            window.visualViewport?.addEventListener('scroll', positionMobileExplanationPanel);
 
             let suggestionItems = [];
             let activeSuggestionIndex = 0;
