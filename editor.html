@@ -16,7 +16,7 @@
     <div class="app-shell">
     <header class="titlebar">
         <div class="brand">CT CODE</div>
-        <div class="app-title">共通テスト仕様 プログラムエディタ</div>
+        <div class="app-title">共通テスト用プログラム表記対応エディタ</div>
         <div class="window-actions" aria-hidden="true"><span></span><span></span><span></span></div>
     </header>
     <div class="toolbar">
@@ -46,6 +46,10 @@
         <button id="settings-btn" class="tool-icon-button" type="button" aria-label="設定" title="設定">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.7 2.5h4.6l.6 2.2c.5.2 1 .5 1.5.9l2.2-.6 2.3 4-1.6 1.6a8 8 0 0 1 0 1.8l1.6 1.6-2.3 4-2.2-.6c-.5.4-1 .7-1.5.9l-.6 2.2H9.7l-.6-2.2c-.5-.2-1-.5-1.5-.9l-2.2.6-2.3-4 1.6-1.6a8 8 0 0 1 0-1.8L3.1 9l2.3-4 2.2.6c.5-.4 1-.7 1.5-.9l.6-2.2Z"/><circle cx="12" cy="11.5" r="3.5"/></svg>
         </button>
+        <div id="line-explanation-tooltip" class="line-explanation-tooltip is-visible" role="status" aria-live="polite" aria-hidden="false">
+            <div class="line-explanation-title">行ごとの解説</div>
+            <div>ハイライトされた行の解説をここに表示します。</div>
+        </div>
     </div>
     <div id="template-menu" class="template-menu" role="menu" aria-label="構文テンプレート" hidden>
         <div class="template-menu-title">挿入する構文を選択</div>
@@ -134,8 +138,6 @@
     </div>
 
     <div id="execution-tooltip" class="execution-tooltip" role="tooltip" aria-hidden="true"></div>
-    <div id="line-explanation-tooltip" class="line-explanation-tooltip" role="tooltip" aria-hidden="true"></div>
-
     <div id="settings-dialog" class="settings-dialog" role="dialog" aria-modal="true" aria-labelledby="settings-title" aria-hidden="true">
         <div class="settings-card">
             <div class="settings-header">
