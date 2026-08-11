@@ -120,6 +120,9 @@
         .font-size-setting input[type="range"] { width: 100%; accent-color: var(--accent); }
         .font-size-output { color: #444; font: 14px var(--mono); text-align: right; }
         .settings-help { margin: 12px 0 0; color: var(--muted); font-size: 12px; }
+        .toggle-setting { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 20px; padding-top: 18px; border-top: 1px solid #e2e2e2; }
+        .toggle-setting label { font-size: 14px; font-weight: 600; }
+        .toggle-setting input { width: 18px; height: 18px; margin: 0; accent-color: var(--accent); }
         .qr-dialog {
             position: fixed;
             inset: 0;
@@ -185,7 +188,7 @@
             padding: 16px 18px;
             border: 0;
             color: #222;
-            background: #f7f7f7;
+            background: #e9ecef;
             caret-color: #222;
             font: 14px/1.5 var(--mono);
             white-space: pre;
@@ -290,6 +293,7 @@
             pointer-events: none;
             font: var(--editor-font-size)/1.2 var(--mono);
             font-weight: 300;
+            letter-spacing: .03em;
             white-space: pre;
             tab-size: 4;
         }
@@ -341,6 +345,7 @@
             tab-size: 4;
             font: var(--editor-font-size)/1.2 var(--mono);
             font-weight: 300;
+            letter-spacing: .03em;
             white-space: pre;
             overflow: auto;
         }
@@ -374,7 +379,7 @@
             letter-spacing: .08em;
         }
         .panel-header::before { content: '>_'; margin-right: 9px; color: var(--green); }
-        .panel-hint { margin-left: auto; color: var(--muted); font-weight: 400; letter-spacing: 0; }
+        .panel-hint { display: none; }
         .panel-tabs { display: flex; align-self: stretch; gap: 2px; }
         .panel-tab {
             height: 100%;
@@ -411,13 +416,15 @@
             padding: 14px 18px;
             overflow: auto;
             color: #212529;
-            background: #f7f7f7;
+            background: #e9ecef;
             font: 14px/1.5 var(--mono);
             white-space: pre;
         }
         .converted-code-panel:empty::before { color: #6c757d; }
         #python-tab-output:empty::before { content: 'Pythonへ変換すると，表示されます'; }
         #javascript-tab-output:empty::before { content: 'JavaScriptへ変換すると，表示されます'; }
+        .output-copy-button { display: inline-grid; place-items: center; width: 30px; height: 28px; margin-left: auto; padding: 0; box-shadow: none; }
+        .output-copy-button svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
         [hidden] { display: none !important; }
         .variable-diagram-container {
             box-sizing: border-box;
@@ -446,6 +453,11 @@
         }
         .flowchart-container:empty::before { color: #6c757d; content: 'フローチャートタブを選択すると，表示されます'; }
         .flowchart-container svg { display: block; margin: auto; }
+        .flowchart-zoom-controls { display: inline-flex; align-items: center; gap: 3px; margin-left: auto; }
+        .flowchart-zoom-controls[hidden] { display: none; }
+        .flowchart-zoom-button { min-width: 28px; height: 26px; padding: 0 7px; box-shadow: none; font: 600 15px/1 var(--sans); }
+        .flowchart-zoom-button svg { display: block; width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+        .flowchart-zoom-value { min-width: 48px; color: #555; font: 12px var(--mono); text-align: center; }
         .execution-tooltip {
             position: fixed;
             z-index: 2000;
@@ -528,13 +540,16 @@
         <button id="save-btn" class="tool-icon-button" type="button" aria-label="テキストファイルとして保存" title="テキストファイルとして保存">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4"/><path d="M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/></svg>
         </button>
+        <button id="editor-copy-btn" class="tool-icon-button" type="button" aria-label="エディタのコードをコピー" title="エディタのコードをコピー">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="11" height="11" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>
+        </button>
         <button id="share-btn" class="tool-icon-button" type="button" aria-label="リンクを共有" title="リンクを共有">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.1.1l2-2a5 5 0 0 0-7.1-7.1l-1.1 1.1"/><path d="M14 11a5 5 0 0 0-7.1-.1l-2 2A5 5 0 0 0 12 20l1.1-1.1"/></svg>
         </button>
         <button id="settings-btn" class="tool-icon-button" type="button" aria-label="設定" title="設定">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.7 2.5h4.6l.6 2.2c.5.2 1 .5 1.5.9l2.2-.6 2.3 4-1.6 1.6a8 8 0 0 1 0 1.8l1.6 1.6-2.3 4-2.2-.6c-.5.4-1 .7-1.5.9l-.6 2.2H9.7l-.6-2.2c-.5-.2-1-.5-1.5-.9l-2.2.6-2.3-4 1.6-1.6a8 8 0 0 1 0-1.8L3.1 9l2.3-4 2.2.6c.5-.4 1-.7 1.5-.9l.6-2.2Z"/><circle cx="12" cy="11.5" r="3.5"/></svg>
         </button>
-        <span class="app-version" aria-label="LastUpDate">LastUpDate: 2026/08/10</span>
+        <span class="app-version" aria-label="LastUpDate">LastUpDate: 2026/08/11</span>
     </div>
     <div class="editor-container">
         <div class="editor-shell">
@@ -554,6 +569,9 @@
                 <button id="javascript-tab" class="panel-tab" type="button" role="tab" aria-selected="false" aria-controls="javascript-tab-output">JAVASCRIPT</button>
             </div>
             <span id="output-panel-hint" class="panel-hint">実行結果</span>
+            <button id="output-copy-button" class="output-copy-button" type="button" aria-label="変換結果をクリップボードにコピー" title="クリップボードにコピー" hidden>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="11" height="11" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>
+            </button>
         </div>
         <div class="output-view-stack">
             <div id="output-area" class="output-container" role="tabpanel" aria-labelledby="output-tab"></div>
@@ -564,6 +582,14 @@
             <div class="panel-tabs" role="tablist" aria-label="解析表示の切り替え">
                 <button id="variables-tab" class="panel-tab is-active" type="button" role="tab" aria-selected="true" aria-controls="variable-diagram">VARIABLES</button>
                 <button id="flowchart-tab" class="panel-tab" type="button" role="tab" aria-selected="false" aria-controls="flowchart-view">FLOWCHART</button>
+            </div>
+            <div id="flowchart-zoom-controls" class="flowchart-zoom-controls" aria-label="フローチャートの表示倍率" hidden>
+                <button id="flowchart-zoom-out" class="flowchart-zoom-button" type="button" aria-label="縮小" title="縮小">−</button>
+                <button id="flowchart-zoom-reset" class="flowchart-zoom-button flowchart-zoom-value" type="button" aria-label="表示倍率を100%に戻す" title="表示倍率を100%に戻す">100%</button>
+                <button id="flowchart-zoom-in" class="flowchart-zoom-button" type="button" aria-label="拡大" title="拡大">＋</button>
+                <button id="flowchart-download" class="flowchart-zoom-button" type="button" aria-label="フローチャートをPNG形式で保存" title="PNG形式で保存">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4"/><path d="M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/></svg>
+                </button>
             </div>
             <span id="analysis-panel-hint" class="panel-hint">変数と配列の対応図</span>
         </div>
@@ -598,6 +624,11 @@
                 <output id="font-size-output" class="font-size-output" for="font-size-range">18 px</output>
             </div>
             <p class="settings-help">エディタの文字と行番号の大きさを変更します。</p>
+            <div class="toggle-setting">
+                <label for="line-explanation-toggle">行ごとの解説</label>
+                <input id="line-explanation-toggle" type="checkbox" checked>
+            </div>
+            <p class="settings-help">エディタ上の行にマウスポインターを合わせたとき，処理の解説を表示します。</p>
         </div>
     </div>
 
@@ -640,6 +671,7 @@
             const javascriptTab = document.getElementById('javascript-tab');
             const javascriptTabOutput = document.getElementById('javascript-tab-output');
             const outputPanelHint = document.getElementById('output-panel-hint');
+            const outputCopyButton = document.getElementById('output-copy-button');
             const stepButton = document.getElementById('step-btn');
             const autoStepButton = document.getElementById('auto-step-btn');
             const stepCounterStatus = document.getElementById('step-counter-status');
@@ -651,6 +683,11 @@
             const variablesTab = document.getElementById('variables-tab');
             const flowchartTab = document.getElementById('flowchart-tab');
             const flowchartView = document.getElementById('flowchart-view');
+            const flowchartZoomControls = document.getElementById('flowchart-zoom-controls');
+            const flowchartZoomOut = document.getElementById('flowchart-zoom-out');
+            const flowchartZoomReset = document.getElementById('flowchart-zoom-reset');
+            const flowchartZoomIn = document.getElementById('flowchart-zoom-in');
+            const flowchartDownload = document.getElementById('flowchart-download');
             const analysisPanelHint = document.getElementById('analysis-panel-hint');
             const executionTooltip = document.getElementById('execution-tooltip');
             const lineExplanationTooltip = document.getElementById('line-explanation-tooltip');
@@ -660,6 +697,7 @@
             const openButton = document.getElementById('open-btn');
             const openFileInput = document.getElementById('open-file-input');
             const saveButton = document.getElementById('save-btn');
+            const editorCopyButton = document.getElementById('editor-copy-btn');
             const shareButton = document.getElementById('share-btn');
             const qrDialog = document.getElementById('qr-dialog');
             const qrCode = document.getElementById('qr-code');
@@ -678,8 +716,11 @@
             const settingsClose = document.getElementById('settings-close');
             const fontSizeRange = document.getElementById('font-size-range');
             const fontSizeOutput = document.getElementById('font-size-output');
+            const lineExplanationToggle = document.getElementById('line-explanation-toggle');
 
             const FONT_SIZE_STORAGE_KEY = 'editor-font-size';
+            const LINE_EXPLANATION_STORAGE_KEY = 'line-explanation-enabled';
+            let lineExplanationEnabled = true;
             const applyEditorFontSize = (size) => {
                 const safeSize = Math.min(28, Math.max(12, Number(size) || 18));
                 document.documentElement.style.setProperty('--editor-font-size', `${safeSize}px`);
@@ -708,6 +749,11 @@
                 localStorage.setItem(FONT_SIZE_STORAGE_KEY, fontSizeRange.value);
                 updateActiveLine();
             });
+            lineExplanationToggle.addEventListener('change', () => {
+                lineExplanationEnabled = lineExplanationToggle.checked;
+                localStorage.setItem(LINE_EXPLANATION_STORAGE_KEY, String(lineExplanationEnabled));
+                if (!lineExplanationEnabled) hideLineExplanation();
+            });
 
             const showButtonSuccess = (button, message) => {
                 const originalLabel = button.getAttribute('aria-label');
@@ -734,6 +780,7 @@
                 outputTab.setAttribute('aria-selected', String(!showPython && !showJavaScript));
                 pythonTab.setAttribute('aria-selected', String(showPython));
                 javascriptTab.setAttribute('aria-selected', String(showJavaScript));
+                outputCopyButton.hidden = !showPython && !showJavaScript;
                 outputPanelHint.textContent = showPython
                     ? 'Python変換結果'
                     : showJavaScript ? 'JavaScript変換結果' : '実行結果';
@@ -762,6 +809,7 @@
                 flowchartTab.classList.toggle('is-active', showFlowchart);
                 variablesTab.setAttribute('aria-selected', String(!showFlowchart));
                 flowchartTab.setAttribute('aria-selected', String(showFlowchart));
+                flowchartZoomControls.hidden = !showFlowchart;
                 analysisPanelHint.textContent = showFlowchart ? '入力中のプログラムから生成' : '変数と配列の対応図';
             };
             variablesTab.addEventListener('click', () => selectAnalysisView('variables'));
@@ -897,6 +945,18 @@
                 copyArea.remove();
                 if (!copied) throw new Error('Clipboard copy failed');
             };
+            outputCopyButton.addEventListener('click', async () => {
+                const code = pythonTabOutput.hidden
+                    ? javascriptTabOutput.textContent
+                    : pythonTabOutput.textContent;
+                if (!code) return;
+                await copyText(code);
+                showButtonSuccess(outputCopyButton, 'コピーしました');
+            });
+            editorCopyButton.addEventListener('click', async () => {
+                await copyText(editor.value);
+                showButtonSuccess(editorCopyButton, 'コピーしました');
+            });
 
             const closePythonDialog = () => {
                 pythonDialog.classList.remove('is-open');
@@ -1107,55 +1167,172 @@
                         text: raw.trim(),
                         indent: Math.floor((raw.match(/^[ \t]*/)[0].replaceAll('\t', '    ').length) / 4)
                     }))
-                    .filter((line) => line.text);
-                const maxIndent = Math.max(0, ...sourceLines.map((line) => line.indent));
-                const width = Math.max(760, 620 + maxIndent * 70);
+                    .filter((line) => line.text && !line.text.startsWith('#') && !line.text.startsWith('//'));
+                const isLoop = (text) => /(?:の間繰り返す:|ずつ(?:増やし|減らし)ながら繰り返す:)$/.test(text);
+                const isCondition = (text) => /^(もし\s|そうでなくもし)/.test(text);
+                const blockEnd = (start) => {
+                    let end = start;
+                    for (let index = start + 1; index < sourceLines.length; index += 1) {
+                        if (sourceLines[index].indent <= sourceLines[start].indent) break;
+                        end = index;
+                    }
+                    return end;
+                };
+                const loopEnds = new Map();
+                sourceLines.forEach((line, index) => {
+                    if (!isLoop(line.text)) return;
+                    const end = blockEnd(index);
+                    const endings = loopEnds.get(end) ?? [];
+                    endings.unshift(index);
+                    loopEnds.set(end, endings);
+                });
+                const displayNodes = [{ text: 'はじめ', type: 'terminal' }];
+                const sourceNodeIndexes = new Map();
+                sourceLines.forEach((line, sourceIndex) => {
+                    let type = 'process';
+                    if (isCondition(line.text)) type = 'condition';
+                    else if (isLoop(line.text)) type = 'loopStart';
+                    else if (line.text === 'そうでなければ:') type = 'branch';
+                    else if (/^表示する\s*\(/.test(line.text)) type = 'output';
+                    else if (/(?:入力|input)\s*\(/i.test(line.text)) type = 'input';
+                    sourceNodeIndexes.set(sourceIndex, displayNodes.length);
+                    displayNodes.push({ ...line, type, sourceIndex });
+                    (loopEnds.get(sourceIndex) ?? []).forEach((loopSourceIndex) => {
+                        displayNodes.push({ text: 'ループ', type: 'loopEnd', loopSourceIndex });
+                    });
+                });
+                displayNodes.push({ text: 'おわり', type: 'terminal' });
+                const width = 900;
                 const center = width / 2;
-                const nodes = [
-                    { text: '開始', indent: 0, type: 'terminal' },
-                    ...sourceLines.map((line) => ({
-                        ...line,
-                        type: /^(もし\s|そうでなくもし)/.test(line.text)
-                            ? 'condition'
-                            : /(?:の間繰り返す:|ずつ(?:増やし|減らし)ながら繰り返す:)$/.test(line.text)
-                                ? 'loop'
-                                : line.text === 'そうでなければ:'
-                                    ? 'branch'
-                                    : line.text.startsWith('#') || line.text.startsWith('//') ? 'comment' : 'process'
-                    })),
-                    { text: '終了', indent: 0, type: 'terminal' }
-                ].map((node, index) => ({
+                const nodes = displayNodes.map((node, index) => ({
                     ...node,
-                    x: center + node.indent * 46,
-                    y: 55 + index * 88
+                    x: center,
+                    y: 55 + index * 100
                 }));
                 const height = nodes.at(-1).y + 55;
                 const connectors = nodes.slice(0, -1).map((node, index) => {
                     const next = nodes[index + 1];
-                    return `<path class="connector" d="M ${node.x} ${node.y + 31} L ${next.x} ${next.y - 31}"/>`;
+                    const startY = node.y + (node.type === 'condition' ? 34 : 32);
+                    const endY = next.y - (next.type === 'condition' ? 34 : 32);
+                    const yes = node.type === 'condition' ? `<text class="edge-label" x="${center + 15}" y="${startY + 18}">Yes</text>` : '';
+                    return `<path class="connector" d="M ${center} ${startY} V ${endY}"/>${yes}`;
                 }).join('');
+                const sideConnectors = [];
+                sourceLines.forEach((line, sourceIndex) => {
+                    if (!isCondition(line.text)) return;
+                    const fromIndex = sourceNodeIndexes.get(sourceIndex);
+                    const nextSourceIndex = blockEnd(sourceIndex) + 1;
+                    const targetIndex = nextSourceIndex < sourceLines.length
+                        ? sourceNodeIndexes.get(nextSourceIndex)
+                        : nodes.length - 1;
+                    if (targetIndex <= fromIndex + 1) return;
+                    const from = nodes[fromIndex];
+                    const target = nodes[targetIndex];
+                    const sideX = center + 285;
+                    sideConnectors.push(`<path class="branch-connector" d="M ${center + 210} ${from.y} H ${sideX} V ${target.y - 50} H ${center}"/><text class="edge-label" x="${center + 225}" y="${from.y - 10}">No</text>`);
+                });
+                const textElement = (label, x, y, maxCharacters = 28) => {
+                    const normalized = label.replace(/:$/, '');
+                    const lines = normalized.length > maxCharacters
+                        ? [normalized.slice(0, maxCharacters), `${normalized.slice(maxCharacters, maxCharacters * 2 - 1)}${normalized.length > maxCharacters * 2 - 1 ? '…' : ''}`]
+                        : [normalized];
+                    const firstY = y - ((lines.length - 1) * 10);
+                    return `<text x="${x}" y="${firstY}">${lines.map((part, index) => `<tspan x="${x}" dy="${index ? 20 : 0}">${escapeHtml(part)}</tspan>`).join('')}</text>`;
+                };
                 const shapes = nodes.map((node) => {
-                    const label = node.text.length > 46 ? `${node.text.slice(0, 45)}…` : node.text;
-                    const safeLabel = escapeHtml(label);
                     if (node.type === 'condition') {
-                        return `<g><polygon class="condition" points="${node.x},${node.y - 34} ${node.x + 210},${node.y} ${node.x},${node.y + 34} ${node.x - 210},${node.y}"/><text x="${node.x}" y="${node.y}">${safeLabel}</text></g>`;
+                        return `<g><polygon points="${center},${node.y - 34} ${center + 210},${node.y} ${center},${node.y + 34} ${center - 210},${node.y}"/>${textElement(node.text.replace(/^もし\s+/, '').replace(/\s+ならば:$/, ''), center, node.y)}</g>`;
                     }
-                    if (node.type === 'loop') {
-                        return `<g><polygon class="loop" points="${node.x - 180},${node.y - 30} ${node.x + 180},${node.y - 30} ${node.x + 210},${node.y} ${node.x + 180},${node.y + 30} ${node.x - 180},${node.y + 30} ${node.x - 210},${node.y}"/><text x="${node.x}" y="${node.y}">${safeLabel}</text></g>`;
+                    if (node.type === 'loopStart') {
+                        return `<g><polygon points="${center - 190},${node.y - 32} ${center + 190},${node.y - 32} ${center + 210},${node.y - 12} ${center + 210},${node.y + 32} ${center - 210},${node.y + 32} ${center - 210},${node.y - 12}"/>${textElement(node.text, center, node.y)}</g>`;
                     }
-                    const nodeWidth = Math.min(420, Math.max(120, label.length * 10 + 34));
-                    const className = node.type === 'comment' ? 'comment' : node.type === 'terminal' ? 'terminal' : node.type === 'branch' ? 'branch' : 'process';
-                    return `<g><rect class="${className}" x="${node.x - nodeWidth / 2}" y="${node.y - 28}" width="${nodeWidth}" height="56" rx="${node.type === 'terminal' ? 28 : 5}"/><text x="${node.x}" y="${node.y}">${safeLabel}</text></g>`;
+                    if (node.type === 'loopEnd') {
+                        return `<g><polygon points="${center - 210},${node.y - 32} ${center + 210},${node.y - 32} ${center + 210},${node.y + 12} ${center + 190},${node.y + 32} ${center - 190},${node.y + 32} ${center - 210},${node.y + 12}"/>${textElement(node.text, center, node.y)}</g>`;
+                    }
+                    if (node.type === 'input') {
+                        return `<g><polygon points="${center - 190},${node.y - 32} ${center + 200},${node.y - 32} ${center + 180},${node.y + 32} ${center - 210},${node.y + 32}"/>${textElement(node.text, center, node.y)}</g>`;
+                    }
+                    if (node.type === 'output') {
+                        return `<g><path d="M ${center - 210} ${node.y} L ${center - 170} ${node.y - 32} H ${center + 165} A 32 32 0 0 1 ${center + 165} ${node.y + 32} H ${center - 170} Z"/>${textElement(node.text, center + 10, node.y)}</g>`;
+                    }
+                    const processLineLength = 44;
+                    const nodeWidth = Math.min(660, Math.max(150, Math.min(node.text.length, processLineLength) * 14 + 36));
+                    const radius = node.type === 'terminal' ? 32 : 0;
+                    return `<g><rect x="${center - nodeWidth / 2}" y="${node.y - 32}" width="${nodeWidth}" height="64" rx="${radius}"/>${textElement(node.text, center, node.y, processLineLength)}</g>`;
                 }).join('');
-                return `<svg id="flowchart" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" role="img" aria-label="プログラムのフローチャート"><style>.connector{fill:none;stroke:#777;stroke-width:1.5;marker-end:url(#arrow)}rect,polygon{fill:#fff;stroke:#555;stroke-width:1.5}.condition{fill:#fff8e7;stroke:#a66b00}.loop{fill:#eef7ed;stroke:#488a42}.branch{fill:#f8f4ff;stroke:#8959a8}.terminal{fill:#e9f5ff;stroke:#428bca}.comment{fill:#f1f1f1;stroke:#999;stroke-dasharray:5 3}text{font:14px Monaco,Menlo,Consolas,monospace;text-anchor:middle;dominant-baseline:middle}</style><defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#777"/></marker></defs>${connectors}${shapes}</svg>`;
+                return `<svg id="flowchart" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" role="img" aria-label="プログラムのフローチャート"><style>#flowchart .connector,#flowchart .branch-connector{fill:none;stroke:#268cf2;stroke-width:1;marker-end:url(#arrow)}#flowchart rect{fill:#e5eef8;stroke:#999;stroke-width:1.2}#flowchart polygon,#flowchart path:not(.connector):not(.branch-connector):not(.arrow-head){fill:#fffec9;stroke:#999;stroke-width:1.2}#flowchart .arrow-head{fill:#268cf2;stroke:none}#flowchart text{font:15px Monaco,Menlo,Consolas,'Noto Sans JP',monospace;text-anchor:middle;dominant-baseline:middle;fill:#111}#flowchart .edge-label{font-size:13px;fill:#666;text-anchor:start;paint-order:stroke;stroke:#fff;stroke-width:4px;stroke-linejoin:round}</style><defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path class="arrow-head" d="M0,0 L8,4 L0,8 z"/></marker></defs>${connectors}${sideConnectors.join('')}${shapes}</svg>`;
             };
 
             const showFlowchart = () => {
                 flowchartView.innerHTML = createFlowchartSvg(editor.value);
+                applyFlowchartZoom(flowchartZoom, false);
                 selectAnalysisView('flowchart');
                 flowchartView.scrollTo({ top: 0, left: 0 });
             };
             flowchartTab.addEventListener('click', showFlowchart);
+
+            let flowchartZoom = 1;
+            const applyFlowchartZoom = (zoom, preserveCenter = true) => {
+                const svg = flowchartView.querySelector('svg');
+                flowchartZoom = Math.min(2, Math.max(.5, zoom));
+                flowchartZoomReset.textContent = `${Math.round(flowchartZoom * 100)}%`;
+                flowchartZoomOut.disabled = flowchartZoom <= .5;
+                flowchartZoomIn.disabled = flowchartZoom >= 2;
+                if (!svg) return;
+                const centerX = preserveCenter ? flowchartView.scrollLeft + flowchartView.clientWidth / 2 : 0;
+                const centerY = preserveCenter ? flowchartView.scrollTop + flowchartView.clientHeight / 2 : 0;
+                const previousWidth = svg.getBoundingClientRect().width || Number(svg.getAttribute('width'));
+                const previousHeight = svg.getBoundingClientRect().height || Number(svg.getAttribute('height'));
+                const baseWidth = svg.viewBox.baseVal.width;
+                const baseHeight = svg.viewBox.baseVal.height;
+                svg.style.width = `${baseWidth * flowchartZoom}px`;
+                svg.style.height = `${baseHeight * flowchartZoom}px`;
+                if (preserveCenter && previousWidth && previousHeight) {
+                    const ratioX = centerX / previousWidth;
+                    const ratioY = centerY / previousHeight;
+                    requestAnimationFrame(() => flowchartView.scrollTo({
+                        left: ratioX * baseWidth * flowchartZoom - flowchartView.clientWidth / 2,
+                        top: ratioY * baseHeight * flowchartZoom - flowchartView.clientHeight / 2
+                    }));
+                }
+            };
+            flowchartZoomOut.addEventListener('click', () => applyFlowchartZoom(flowchartZoom - .25));
+            flowchartZoomIn.addEventListener('click', () => applyFlowchartZoom(flowchartZoom + .25));
+            flowchartZoomReset.addEventListener('click', () => applyFlowchartZoom(1));
+            flowchartDownload.addEventListener('click', () => {
+                const svg = flowchartView.querySelector('svg');
+                if (!svg) return;
+                const exportScale = 2;
+                const width = svg.viewBox.baseVal.width;
+                const height = svg.viewBox.baseVal.height;
+                const source = new XMLSerializer().serializeToString(svg);
+                const svgBlob = new Blob([source], { type: 'image/svg+xml;charset=utf-8' });
+                const objectUrl = URL.createObjectURL(svgBlob);
+                const image = new Image();
+                image.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = width * exportScale;
+                    canvas.height = height * exportScale;
+                    const context = canvas.getContext('2d');
+                    context.scale(exportScale, exportScale);
+                    context.fillStyle = '#fff';
+                    context.fillRect(0, 0, width, height);
+                    context.drawImage(image, 0, 0, width, height);
+                    URL.revokeObjectURL(objectUrl);
+                    canvas.toBlob((pngBlob) => {
+                        if (!pngBlob) return;
+                        const downloadUrl = URL.createObjectURL(pngBlob);
+                        const link = document.createElement('a');
+                        link.href = downloadUrl;
+                        link.download = 'flowchart.png';
+                        link.click();
+                        URL.revokeObjectURL(downloadUrl);
+                        showButtonSuccess(flowchartDownload, 'PNGを保存しました');
+                    }, 'image/png');
+                };
+                image.onerror = () => URL.revokeObjectURL(objectUrl);
+                image.src = objectUrl;
+            });
 
             const setEditorWidth = (percent) => {
                 const safePercent = Math.min(80, Math.max(20, percent));
@@ -1264,11 +1441,11 @@
                 }
 
                 let match = text.match(/^もし\s+(.+)\s+ならば:$/);
-                if (match) return { title: `${lineNumber}行目：条件分岐`, description: `条件「${match[1]}」が真の場合に，インデントされた処理を実行する条件分岐である。` };
+                if (match) return { title: `${lineNumber}行目：条件分岐`, description: `条件式「${match[1]}」が真の場合に，インデントされた処理を実行する条件分岐である。` };
                 match = text.match(/^そうでなくもし\s+(.+)\s+ならば:$/);
-                if (match) return { title: `${lineNumber}行目：追加の条件分岐`, description: `それまでの条件が偽であり，条件「${match[1]}」が真の場合に処理を実行する条件分岐である。` };
+                if (match) return { title: `${lineNumber}行目：追加の条件分岐`, description: `それまでの条件式が偽であり，条件「${match[1]}」が真の場合に処理を実行する条件分岐である。` };
                 if (text === 'そうでなければ:') {
-                    return { title: `${lineNumber}行目：それ以外の分岐`, description: 'それまでの条件がすべて偽だった場合に，インデントされた処理を実行する分岐である。' };
+                    return { title: `${lineNumber}行目：それ以外の分岐`, description: 'それまでの条件式がすべて偽だった場合に，インデントされた処理を実行する分岐である。' };
                 }
 
                 match = text.match(/^(.+)\s*を\s*(.+)\s*から\s*(.+)\s*まで\s*(.+)\s*ずつ増やしながら繰り返す:$/);
@@ -1276,7 +1453,7 @@
                 match = text.match(/^(.+)\s*を\s*(.+)\s*から\s*(.+)\s*まで\s*(.+)\s*ずつ減らしながら繰り返す:$/);
                 if (match) return { title: `${lineNumber}行目：順次繰り返し`, description: `繰り返し変数「${match[1].trim()}」を${match[2]}から${match[3]}まで${match[4]}ずつ減らし，範囲内の処理を繰り返す。` };
                 match = text.match(/^(.+)\s*の間繰り返す:$/);
-                if (match) return { title: `${lineNumber}行目：条件繰り返し`, description: `条件「${match[1]}」が真である間，インデントされた処理を繰り返す。` };
+                if (match) return { title: `${lineNumber}行目：条件繰り返し`, description: `条件式「${match[1]}」が真である間，インデントされた処理を繰り返す。` };
 
                 match = text.match(/^表示する\((.*)\)$/);
                 if (match) return { title: `${lineNumber}行目：表示`, description: `「${match[1]}」の値を実行結果へ表示する処理である。` };
@@ -1325,6 +1502,10 @@
             };
 
             editor.addEventListener('pointermove', (event) => {
+                if (!lineExplanationEnabled) {
+                    hideLineExplanation();
+                    return;
+                }
                 const styles = getComputedStyle(editor);
                 const lineHeight = parseFloat(styles.lineHeight);
                 const paddingTop = parseFloat(styles.paddingTop);
@@ -1430,6 +1611,12 @@
             };
 
             editor.addEventListener('keydown', (event) => {
+                if (event.isComposing) return;
+                if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+                    event.preventDefault();
+                    document.getElementById('run-btn').click();
+                    return;
+                }
                 if (event.key === 'Tab') {
                     event.preventDefault();
                     const start = editor.selectionStart;
@@ -1438,10 +1625,44 @@
                     updateLineNumbers();
                     updateHighlight();
                     updateCursorPosition();
+                    return;
                 }
-                if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+                if (event.key === 'Enter') {
                     event.preventDefault();
-                    document.getElementById('run-btn').click();
+                    const cursor = editor.selectionStart;
+                    const lineStart = editor.value.lastIndexOf('\n', cursor - 1) + 1;
+                    const currentLine = editor.value.slice(lineStart, cursor);
+                    const indentation = currentLine.match(/^[ \t]*/)?.[0] ?? '';
+                    const nextIndentation = indentation + (currentLine.trimEnd().endsWith(':') ? '    ' : '');
+                    editor.setRangeText(`\n${nextIndentation}`, editor.selectionStart, editor.selectionEnd, 'end');
+                    editor.dispatchEvent(new Event('input', { bubbles: true }));
+                    updateCursorPosition();
+                    return;
+                }
+                if (event.ctrlKey || event.metaKey || event.altKey) return;
+                const pairs = { '(': ')', '[': ']', '"': '"' };
+                if (event.key === '"' && editor.selectionStart === editor.selectionEnd && editor.value[editor.selectionStart] === '"') {
+                    event.preventDefault();
+                    editor.setSelectionRange(editor.selectionStart + 1, editor.selectionStart + 1);
+                    updateCursorPosition();
+                    return;
+                }
+                const closingCharacter = pairs[event.key];
+                if (closingCharacter) {
+                    event.preventDefault();
+                    const start = editor.selectionStart;
+                    const end = editor.selectionEnd;
+                    const selectedText = editor.value.slice(start, end);
+                    editor.setRangeText(`${event.key}${selectedText}${closingCharacter}`, start, end, 'end');
+                    editor.setSelectionRange(start + 1, selectedText ? end + 1 : start + 1);
+                    editor.dispatchEvent(new Event('input', { bubbles: true }));
+                    updateCursorPosition();
+                    return;
+                }
+                if ([')', ']'].includes(event.key) && editor.selectionStart === editor.selectionEnd && editor.value[editor.selectionStart] === event.key) {
+                    event.preventDefault();
+                    editor.setSelectionRange(editor.selectionStart + 1, editor.selectionStart + 1);
+                    updateCursorPosition();
                 }
             });
             ['click', 'keyup', 'select', 'input'].forEach((eventName) => {
@@ -1457,6 +1678,8 @@
                 }
             }
             applyEditorFontSize(localStorage.getItem(FONT_SIZE_STORAGE_KEY));
+            lineExplanationEnabled = localStorage.getItem(LINE_EXPLANATION_STORAGE_KEY) !== 'false';
+            lineExplanationToggle.checked = lineExplanationEnabled;
             updateLineNumbers();
             updateHighlight();
             updateCursorPosition();
