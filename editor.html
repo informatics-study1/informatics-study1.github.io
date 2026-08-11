@@ -124,6 +124,7 @@
         }
         .tool-icon-button svg { display: block; width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
         .tool-icon-button.is-success { color: #198754; box-shadow: 0 0 0 2px rgba(25,135,84,.25), 0 0 2px 1px rgba(0,0,0,.25); }
+        .mobile-explanation-mode-button { display: none; }
         .settings-dialog { position: fixed; inset: 0; z-index: 1200; display: none; place-items: center; padding: 20px; background: rgba(0,0,0,.45); }
         .settings-dialog.is-open { display: grid; }
         .settings-card { width: min(420px, 100%); padding: 22px; border-radius: 8px; background: #fff; box-shadow: 0 12px 35px rgba(0,0,0,.28); }
@@ -192,6 +193,21 @@
         .editor-tab-close:hover { color: #333; background: #e3e5e7; }
         .editor-tab-add { flex: 0 0 38px; width: 38px; height: 38px; padding: 0; border: 0; border-right: 1px solid #d7d9dc; border-radius: 0; color: #555; background: transparent; box-shadow: none; font-size: 21px; line-height: 38px; transform: none; }
         .editor-tab-add:hover { background: #e5e7e9; transform: none; }
+        .editor-tab-action {
+            flex: 0 0 38px;
+            width: 38px;
+            height: 38px;
+            margin-left: auto;
+            padding: 0;
+            border: 0;
+            border-left: 1px solid #d7d9dc;
+            border-radius: 0;
+            background: transparent;
+            box-shadow: none;
+            transform: none;
+        }
+        .editor-tab-action:hover { background: #e5e7e9; transform: none; }
+        .editor-tab-action svg { width: 18px; height: 18px; }
         .editor-workspace { display: flex; flex: 1; min-height: 0; }
         .pane-resizer {
             position: relative;
@@ -556,12 +572,6 @@
         }
         .line-explanation-tooltip.is-visible { display: block; }
         .line-explanation-title { color: #4271ae; font-weight: 700; }
-        .mobile-explanation-panel { display: none; }
-        .mobile-explanation-header { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-bottom: 1px solid var(--border); }
-        .mobile-explanation-title { min-width: 0; color: #4271ae; font-weight: 700; }
-        .mobile-explanation-close { width: 32px; height: 32px; margin-left: auto; padding: 0; box-shadow: none; font-size: 20px; }
-        .mobile-explanation-body { padding: 14px; overflow-y: auto; color: #333; font-size: 14px; line-height: 1.65; }
-        .mobile-explanation-edit { margin: 0 14px 14px; }
         .statusbar {
             display: flex;
             align-items: center;
@@ -591,6 +601,8 @@
             --green: #55b887;
         }
         [data-theme="dark"] button { color: #d8dde4; background: linear-gradient(#303640, #282d35); box-shadow: 0 0 2px 1px rgba(0,0,0,.55), inset 0 1px 0 #444b55; }
+        [data-theme="dark"] .toolbar,
+        [data-theme="dark"] .statusbar { background: transparent; }
         [data-theme="dark"] button:hover { color: #fff; background: linear-gradient(#39404b, #303640); }
         [data-theme="dark"] #step-btn,
         [data-theme="dark"] #auto-step-btn { color: #d8dde4; background: #292f38; }
@@ -617,6 +629,8 @@
         [data-theme="dark"] .editor-tab.is-active { color: #fff; background: #1d2127; }
         [data-theme="dark"] .editor-tab-close:hover,
         [data-theme="dark"] .editor-tab-add:hover { color: #fff; background: #3a414c; }
+        [data-theme="dark"] .editor-tab-action { color: #d8dde4; background: transparent; border-color: #3b424c; box-shadow: none; }
+        [data-theme="dark"] .editor-tab-action:hover { color: #fff; background: #3a414c; }
         [data-theme="dark"] .line-numbers { color: #828b97; background: #242930; border-color: var(--border); }
         [data-theme="dark"] .line-number.is-active { color: #d7dce3; background: #343a43; }
         [data-theme="dark"] .line-number.is-step::before { text-shadow: -1px 0 #20242b, 1px 0 #20242b, 0 -1px #20242b, 0 1px #20242b; }
@@ -637,8 +651,6 @@
         [data-theme="dark"] .share-copy-button { border-color: #505864; }
         [data-theme="dark"] .execution-tooltip,
         [data-theme="dark"] .line-explanation-tooltip { color: #e4e8ed; background: rgba(36,41,49,.98); border-color: #59616d; }
-        [data-theme="dark"] .mobile-explanation-panel { color: var(--text); background: #242931; border-color: #59616d; }
-        [data-theme="dark"] .mobile-explanation-body { color: var(--text); }
         [data-theme="dark"] .statusbar { color: #a8b0ba; border-color: var(--border); }
         [data-theme="dark"] .step-counter-status { color: #c0c7d0; }
         @media (max-width: 700px) {
@@ -647,6 +659,25 @@
             .app-shell { width: 100%; height: auto; min-height: 100vh; min-height: 100dvh; }
             .toolbar { min-height: 52px; padding: 7px 8px; gap: 7px; background: transparent; overscroll-behavior-x: contain; }
             .toolbar button { flex: 0 0 auto; }
+            .mobile-explanation-mode-button { display: inline-flex; align-items: center; justify-content: center; }
+            .mobile-explanation-mode-button[aria-pressed="true"] { color: #fff; background: var(--accent); }
+            body.is-mobile-explanation-mode .code-pane { box-shadow: inset 0 0 0 2px var(--accent); }
+            body.is-mobile-explanation-mode .line-explanation-tooltip.is-visible {
+                right: 8px;
+                bottom: max(8px, env(safe-area-inset-bottom));
+                left: 8px;
+                top: auto;
+                display: block;
+                width: auto;
+                max-width: none;
+                max-height: 34dvh;
+                overflow-y: auto;
+                padding: 14px 16px;
+                border-radius: 9px;
+                box-shadow: 0 8px 28px rgba(0,0,0,.22);
+                pointer-events: auto;
+                font-size: 14px;
+            }
             .editor-container { flex: none; flex-direction: column; min-height: 0; padding: 0 6px 6px; }
             .pane-resizer { display: none; }
             .editor-shell { flex: none !important; width: 100%; height: 46vh; height: 46dvh; min-height: 320px; border-radius: 3px; }
@@ -662,23 +693,6 @@
             .line-numbers { min-width: 3.4em; padding-right: 8px; padding-left: 4px; }
             .line-number { margin-right: -8px; margin-left: -4px; padding-right: 8px; padding-left: 4px; }
             .line-explanation-tooltip { font-size: 11px; }
-            .line-explanation-tooltip { display: none !important; }
-            .mobile-explanation-panel.is-visible {
-                position: fixed;
-                z-index: 2100;
-                right: 8px;
-                top: 8px;
-                bottom: auto;
-                left: 8px;
-                display: flex;
-                max-height: min(48dvh, 360px);
-                flex-direction: column;
-                overflow: hidden;
-                background: rgba(255,255,255,.98);
-                border: 1px solid #aeb4ba;
-                border-radius: 10px;
-                box-shadow: 0 8px 30px rgba(0,0,0,.22);
-            }
             .code-highlight, textarea { padding-right: 12px; padding-left: 12px; }
             .statusbar { gap: 10px; padding: 0 7px; overflow: hidden; }
             .statusbar .status-right span:nth-last-child(-n+2) { display: none; }
@@ -697,6 +711,7 @@
         <button id="run-btn" type="button">実行 ▶</button>
         <button id="step-btn" type="button" title="プログラムを1行ずつ実行">ステップ実行 ▷</button>
         <button id="auto-step-btn" type="button" title="ステップ実行を自動再生">自動再生 ▶</button>
+        <button id="mobile-explanation-mode-btn" class="mobile-explanation-mode-button" type="button" aria-pressed="false">解説</button>
         <button id="open-btn" class="tool-icon-button" type="button" aria-label="コードを開く" title="コードを開く">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 10V6.5A2.5 2.5 0 0 1 5 4h4.2a2 2 0 0 1 1.6.8L12.5 7H19a2.5 2.5 0 0 1 2.5 2.5V10"/><path d="M4.5 9.5h15a2 2 0 0 1 2 2v5A3.5 3.5 0 0 1 18 20H6a3.5 3.5 0 0 1-3.5-3.5v-5a2 2 0 0 1 2-2Z"/></svg>
         </button>
@@ -734,6 +749,9 @@
         <div class="editor-shell">
             <div id="editor-tabs" class="editor-tabs" role="tablist" aria-label="開いているファイル">
                 <button id="editor-tab-add" class="editor-tab-add" type="button" aria-label="新しいタブ" title="新しいタブ">+</button>
+                <button id="editor-png-btn" class="tool-icon-button editor-tab-action" type="button" aria-label="エディタをPNG画像として保存" title="行番号付きPNG画像として保存">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9" r="1.5"/><path d="m4 17 5-5 3.5 3.5 2-2L20 19"/></svg>
+                </button>
             </div>
             <div class="editor-workspace">
             <pre id="line-numbers" class="line-numbers" aria-hidden="true">1</pre>
@@ -805,14 +823,6 @@
 
     <div id="execution-tooltip" class="execution-tooltip" role="tooltip" aria-hidden="true"></div>
     <div id="line-explanation-tooltip" class="line-explanation-tooltip" role="tooltip" aria-hidden="true"></div>
-    <section id="mobile-explanation-panel" class="mobile-explanation-panel" role="dialog" aria-modal="false" aria-labelledby="mobile-explanation-title" aria-hidden="true">
-        <div class="mobile-explanation-header">
-            <div id="mobile-explanation-title" class="mobile-explanation-title"></div>
-            <button id="mobile-explanation-close" class="mobile-explanation-close" type="button" aria-label="解説を閉じる">×</button>
-        </div>
-        <div id="mobile-explanation-body" class="mobile-explanation-body"></div>
-        <button id="mobile-explanation-edit" class="mobile-explanation-edit" type="button">編集に戻る</button>
-    </section>
 
     <div id="settings-dialog" class="settings-dialog" role="dialog" aria-modal="true" aria-labelledby="settings-title" aria-hidden="true">
         <div class="settings-card">
@@ -867,6 +877,7 @@
             const outputCopyButton = document.getElementById('output-copy-button');
             const stepButton = document.getElementById('step-btn');
             const autoStepButton = document.getElementById('auto-step-btn');
+            const mobileExplanationModeButton = document.getElementById('mobile-explanation-mode-btn');
             const stepCounterStatus = document.getElementById('step-counter-status');
             const syntaxErrorStatus = document.getElementById('syntax-error-status');
             const lineNumbers = document.getElementById('line-numbers');
@@ -891,11 +902,6 @@
             const flowchartDownload = document.getElementById('flowchart-download');
             const executionTooltip = document.getElementById('execution-tooltip');
             const lineExplanationTooltip = document.getElementById('line-explanation-tooltip');
-            const mobileExplanationPanel = document.getElementById('mobile-explanation-panel');
-            const mobileExplanationTitle = document.getElementById('mobile-explanation-title');
-            const mobileExplanationBody = document.getElementById('mobile-explanation-body');
-            const mobileExplanationClose = document.getElementById('mobile-explanation-close');
-            const mobileExplanationEdit = document.getElementById('mobile-explanation-edit');
             const editorContainer = document.querySelector('.editor-container');
             const editorShell = document.querySelector('.editor-shell');
             const viewerPanel = document.querySelector('.viewer-panel');
@@ -906,6 +912,7 @@
             const openFileInput = document.getElementById('open-file-input');
             const saveButton = document.getElementById('save-btn');
             const editorCopyButton = document.getElementById('editor-copy-btn');
+            const editorPngButton = document.getElementById('editor-png-btn');
             const templateButton = document.getElementById('template-btn');
             const templateMenu = document.getElementById('template-menu');
             const shareButton = document.getElementById('share-btn');
@@ -1988,6 +1995,140 @@
                 return html + escapeHtml(source.slice(lastIndex));
             };
 
+            const saveEditorAsPng = () => {
+                const lines = editor.value.split('\n');
+                const styles = getComputedStyle(editor);
+                const fontSize = parseFloat(styles.fontSize) || 16;
+                const lineHeight = Math.max(parseFloat(styles.lineHeight) || 19, Math.ceil(fontSize * 1.35));
+                const fontFamily = styles.fontFamily || 'monospace';
+                const paddingX = 18;
+                const paddingY = 14;
+                const numberDigits = String(Math.max(1, lines.length)).length;
+                const measureCanvas = document.createElement('canvas');
+                const measureContext = measureCanvas.getContext('2d');
+                measureContext.font = `${fontSize}px ${fontFamily}`;
+                const gutterWidth = Math.ceil(measureContext.measureText('0'.repeat(numberDigits + 2)).width + 18);
+                const lineWidths = lines.map((line) => measureContext.measureText(line.replaceAll('\t', '    ')).width);
+                const contentWidth = Math.max(420, Math.ceil(Math.max(0, ...lineWidths) + paddingX * 2));
+                const logicalWidth = gutterWidth + contentWidth;
+                const logicalHeight = Math.max(90, paddingY * 2 + lines.length * lineHeight);
+                const exportScale = Math.max(.5, Math.min(2, 16384 / logicalWidth, 16384 / logicalHeight));
+                const canvas = document.createElement('canvas');
+                canvas.width = Math.ceil(logicalWidth * exportScale);
+                canvas.height = Math.ceil(logicalHeight * exportScale);
+                const context = canvas.getContext('2d');
+                context.scale(exportScale, exportScale);
+
+                const dark = document.documentElement.dataset.theme === 'dark';
+                const palette = dark
+                    ? { background: '#1d2127', gutter: '#242930', border: '#444b55', text: '#e1e5ea', number: '#828b97' }
+                    : { background: '#f8f9fa', gutter: '#f4f4f4', border: '#dddddd', text: '#212529', number: '#9a9a9a' };
+                const tokenColors = {
+                    'token-keyword': '#8959a8',
+                    'token-function': '#4271ae',
+                    'token-string': '#718c00',
+                    'token-number': '#f5871f',
+                    'token-comment': '#8e908c',
+                    'token-operator': '#3e999f'
+                };
+                context.fillStyle = palette.background;
+                context.fillRect(0, 0, logicalWidth, logicalHeight);
+                context.fillStyle = palette.gutter;
+                context.fillRect(0, 0, gutterWidth, logicalHeight);
+                context.fillStyle = palette.border;
+                context.fillRect(gutterWidth - 1, 0, 1, logicalHeight);
+                context.font = `${fontSize}px ${fontFamily}`;
+                context.textBaseline = 'top';
+
+                const drawText = (text, x, y, color) => {
+                    const printable = text.replaceAll('\t', '    ');
+                    context.fillStyle = color;
+                    context.fillText(printable, x, y);
+                    return x + context.measureText(printable).width;
+                };
+
+                const lineInfos = lines.map((line) => {
+                    const indentation = line.match(/^(?: {4}|\t)+/)?.[0] ?? '';
+                    return {
+                        line,
+                        depth: indentation.match(/ {4}|\t/g)?.length ?? 0,
+                        hasCode: line.trim().length > 0
+                    };
+                });
+                const nextDepths = Array(lines.length).fill(null);
+                const nextCodeLines = Array(lines.length).fill(null);
+                let nextCodeDepth = null;
+                let nextCodeLine = null;
+                for (let index = lines.length - 1; index >= 0; index -= 1) {
+                    nextDepths[index] = nextCodeDepth;
+                    nextCodeLines[index] = nextCodeLine;
+                    if (lineInfos[index].hasCode) {
+                        nextCodeDepth = lineInfos[index].depth;
+                        nextCodeLine = lineInfos[index];
+                    }
+                }
+                const indentWidth = context.measureText('    ').width;
+
+                lines.forEach((line, lineIndex) => {
+                    const y = paddingY + lineIndex * lineHeight;
+                    const number = String(lineIndex + 1);
+                    context.fillStyle = palette.number;
+                    context.fillText(number, gutterWidth - paddingX - context.measureText(number).width, y);
+                    const info = lineInfos[lineIndex];
+                    for (let guideIndex = 0; guideIndex < (info.hasCode ? info.depth : 0); guideIndex += 1) {
+                        const depth = guideIndex + 1;
+                        const nextInfo = nextCodeLines[lineIndex];
+                        const nextText = nextInfo?.line.trim() ?? '';
+                        const continuesConditional = nextInfo
+                            && nextInfo.depth === depth - 1
+                            && /^(?:そうでなくもし(?:\s|$)|そうでなければ(?:\s*[：:]?)?$)/.test(nextText);
+                        const isEnd = !continuesConditional
+                            && (nextDepths[lineIndex] === null || nextDepths[lineIndex] < depth);
+                        const guideX = gutterWidth + paddingX + guideIndex * indentWidth + .5;
+                        context.beginPath();
+                        context.strokeStyle = '#268cf2';
+                        context.lineWidth = 1.25;
+                        context.moveTo(guideX, y);
+                        if (isEnd) {
+                            const bendY = y + lineHeight * .72;
+                            context.lineTo(guideX, bendY);
+                            context.lineTo(guideX + indentWidth * .7, bendY);
+                        } else {
+                            context.lineTo(guideX, y + lineHeight);
+                        }
+                        context.stroke();
+                    }
+                    let x = gutterWidth + paddingX;
+                    let lastIndex = 0;
+                    for (const match of line.matchAll(tokenPattern)) {
+                        x = drawText(line.slice(lastIndex, match.index), x, y, palette.text);
+                        const token = match[0];
+                        let tokenClass = 'token-keyword';
+                        if (token.startsWith('"') || token.startsWith("'")) tokenClass = 'token-string';
+                        else if (token.startsWith('//') || token.startsWith('#')) tokenClass = 'token-comment';
+                        else if (/^\d/.test(token)) tokenClass = 'token-number';
+                        else if (['表示する', '要素数', '整数', '乱数', '整数乱数', '最大値', '最小値', '【外部からの入力】'].includes(token)) tokenClass = 'token-function';
+                        else if (/^(←|==|!=|<=|>=|=|[+\-*/%<>]=?)$/.test(token)) tokenClass = 'token-operator';
+                        x = drawText(token, x, y, tokenColors[tokenClass]);
+                        lastIndex = match.index + token.length;
+                    }
+                    drawText(line.slice(lastIndex), x, y, palette.text);
+                });
+
+                canvas.toBlob((blob) => {
+                    if (!blob) return;
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    const baseName = (activeDocument()?.name || 'program').replace(/\.[^.]+$/, '').replace(/[\\/:*?"<>|]/g, '-');
+                    link.href = url;
+                    link.download = `${baseName}-editor.png`;
+                    link.click();
+                    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+                    showButtonSuccess(editorPngButton, 'PNGを保存しました');
+                }, 'image/png');
+            };
+            editorPngButton.addEventListener('click', saveEditorAsPng);
+
             const updateHighlight = () => {
                 const syntaxErrors = validateSyntax(editor.value);
                 syntaxErrorStatus.textContent = syntaxErrors.size ? `構文エラー ${syntaxErrors.size}件` : '';
@@ -2113,26 +2254,26 @@
                 return { title: `${lineNumber}行目：処理`, description: '式または関数呼び出しを実行する処理である。' };
             };
 
-            const positionMobileExplanationPanel = () => {
-                if (!mobileExplanationPanel.classList.contains('is-visible')) return;
-                const viewport = window.visualViewport;
-                const viewportTop = viewport?.offsetTop ?? 0;
-                const viewportHeight = viewport?.height ?? window.innerHeight;
-                const safeGap = 8;
-                const top = Math.max(
-                    viewportTop + safeGap,
-                    viewportTop + viewportHeight - mobileExplanationPanel.offsetHeight - safeGap
-                );
-                mobileExplanationPanel.style.top = `${top}px`;
-            };
-
             const hideLineExplanation = () => {
                 lineExplanationTooltip.classList.remove('is-visible');
                 lineExplanationTooltip.setAttribute('aria-hidden', 'true');
-                mobileExplanationPanel.classList.remove('is-visible');
-                mobileExplanationPanel.setAttribute('aria-hidden', 'true');
-                mobileExplanationPanel.style.top = '';
             };
+
+            let mobileExplanationMode = false;
+            const setMobileExplanationMode = (enabled, returnToEditor = false) => {
+                mobileExplanationMode = enabled && window.matchMedia('(max-width: 700px)').matches;
+                editor.readOnly = mobileExplanationMode;
+                document.body.classList.toggle('is-mobile-explanation-mode', mobileExplanationMode);
+                mobileExplanationModeButton.setAttribute('aria-pressed', String(mobileExplanationMode));
+                mobileExplanationModeButton.textContent = mobileExplanationMode ? '編集に戻る' : '解説';
+                hideLineExplanation();
+                hideVariableSuggestions();
+                if (mobileExplanationMode) editor.blur();
+                else if (returnToEditor) editor.focus();
+            };
+            mobileExplanationModeButton.addEventListener('click', () => {
+                setMobileExplanationMode(!mobileExplanationMode, mobileExplanationMode);
+            });
 
             const showLineExplanationAt = (event) => {
                 if (!lineExplanationEnabled) {
@@ -2158,25 +2299,15 @@
                     return;
                 }
 
-                const useMobilePanel = event.pointerType !== 'mouse' && window.matchMedia('(max-width: 700px)').matches;
-                if (useMobilePanel) {
-                    lineExplanationTooltip.classList.remove('is-visible');
-                    lineExplanationTooltip.setAttribute('aria-hidden', 'true');
-                    mobileExplanationTitle.textContent = explanation.title;
-                    mobileExplanationBody.textContent = explanation.description;
-                    editor.blur();
-                    hideVariableSuggestions();
-                    window.setTimeout(() => {
-                        mobileExplanationPanel.classList.add('is-visible');
-                        mobileExplanationPanel.setAttribute('aria-hidden', 'false');
-                        requestAnimationFrame(positionMobileExplanationPanel);
-                    }, 120);
-                    return;
-                }
-
                 lineExplanationTooltip.innerHTML = `<div class="line-explanation-title">${escapeHtml(explanation.title)}</div><div>${escapeHtml(explanation.description)}</div>`;
                 lineExplanationTooltip.classList.add('is-visible');
                 lineExplanationTooltip.setAttribute('aria-hidden', 'false');
+                if (mobileExplanationMode) {
+                    lineExplanationTooltip.style.inset = 'auto 8px max(8px, env(safe-area-inset-bottom)) 8px';
+                    return;
+                }
+                lineExplanationTooltip.style.right = '';
+                lineExplanationTooltip.style.bottom = '';
                 const gap = 14;
                 const maxLeft = window.innerWidth - lineExplanationTooltip.offsetWidth - 10;
                 let top = event.clientY + gap;
@@ -2190,22 +2321,17 @@
                 if (event.pointerType === 'mouse') showLineExplanationAt(event);
             });
             editor.addEventListener('pointerup', (event) => {
-                if (event.pointerType !== 'mouse') showLineExplanationAt(event);
+                if (event.pointerType !== 'mouse' && mobileExplanationMode) showLineExplanationAt(event);
             });
             editor.addEventListener('pointerleave', (event) => {
                 if (event.pointerType === 'mouse') hideLineExplanation();
             });
             document.addEventListener('pointerdown', (event) => {
-                if (event.pointerType !== 'mouse' && event.target !== editor) hideLineExplanation();
+                if (event.pointerType !== 'mouse' && event.target !== editor && event.target !== lineExplanationTooltip) hideLineExplanation();
             });
-            mobileExplanationClose.addEventListener('click', hideLineExplanation);
-            mobileExplanationEdit.addEventListener('click', () => {
-                hideLineExplanation();
-                editor.focus();
+            window.matchMedia('(max-width: 700px)').addEventListener('change', (event) => {
+                if (!event.matches && mobileExplanationMode) setMobileExplanationMode(false);
             });
-            window.visualViewport?.addEventListener('resize', positionMobileExplanationPanel);
-            window.visualViewport?.addEventListener('scroll', positionMobileExplanationPanel);
-
             let suggestionItems = [];
             let activeSuggestionIndex = 0;
             let suggestionTokenStart = 0;
