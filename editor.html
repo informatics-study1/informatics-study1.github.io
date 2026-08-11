@@ -26,6 +26,10 @@
             --editor-font-size: 16px;
             --editor-line-height: 19px;
         }
+        html {
+            -webkit-text-size-adjust: 100%;
+            text-size-adjust: 100%;
+        }
         * { box-sizing: border-box; }
         body {
             min-width: 620px;
@@ -191,7 +195,7 @@
         .editor-workspace { display: flex; flex: 1; min-height: 0; }
         .pane-resizer {
             position: relative;
-            flex: 0 0 12px;
+            flex: 0 0 10px;
             cursor: col-resize;
             touch-action: none;
             outline: none;
@@ -200,7 +204,7 @@
             content: '';
             position: absolute;
             top: 50%;
-            left: 4px;
+            left: 3px;
             width: 4px;
             height: 34px;
             border-radius: 4px;
@@ -370,7 +374,7 @@
         .variable-suggestion:hover, .variable-suggestion.is-active { color: #111; background: #e5eef8; }
         .viewer-panel {
             display: grid;
-            grid-template-rows: 38px minmax(80px, 32%) 38px minmax(0, 1fr);
+            grid-template-rows: 38px minmax(80px, 32%) 12px 38px minmax(0, 1fr);
             flex: 1 1 50%;
             min-width: 0;
             min-height: 0;
@@ -412,6 +416,33 @@
         .panel-tab:hover { color: #333; background: #f5f5f5; }
         .panel-tab.is-active { color: #333; border-bottom-color: #4271ae; background: transparent; }
         .output-view-stack { min-height: 0; overflow: hidden; }
+        .output-row-resizer {
+            position: relative;
+            z-index: 3;
+            min-height: 12px;
+            cursor: row-resize;
+            touch-action: none;
+            outline: none;
+            background: #f8f9fa;
+            border-top: 1px solid #d2d7db;
+            border-bottom: 1px solid #d2d7db;
+        }
+        .output-row-resizer::after {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 42px;
+            height: 3px;
+            border-radius: 3px;
+            background: #b9bec4;
+            content: '';
+            transform: translate(-50%, -50%);
+            transition: width .15s, background .15s;
+        }
+        .output-row-resizer:hover::after,
+        .output-row-resizer:focus::after,
+        .output-row-resizer.is-dragging::after { width: 64px; background: var(--accent); }
+        body.is-row-resizing { cursor: row-resize; user-select: none; }
         .output-container {
             box-sizing: border-box;
             height: 100%;
@@ -434,10 +465,19 @@
             color: #212529;
             background: #e9ecef;
             font: 14px/1.5 var(--mono);
+            -webkit-text-size-adjust: none;
+            text-size-adjust: none;
             white-space: pre;
         }
         .converted-code-panel:empty::before { color: #6c757d; }
-        .converted-code-line { display: inline-block; min-width: 100%; border-radius: 2px; }
+        .converted-code-line {
+            display: inline-block;
+            min-width: 100%;
+            border-radius: 2px;
+            font: inherit;
+            -webkit-text-size-adjust: none;
+            text-size-adjust: none;
+        }
         .converted-code-line[data-source-line] { cursor: pointer; }
         .converted-code-line[data-source-line]:hover, .converted-code-line.is-corresponding { background: rgba(66, 139, 202, .16); }
         #python-tab-output:empty::before { content: 'Pythonへ変換すると，表示されます'; }
@@ -516,6 +556,12 @@
         }
         .line-explanation-tooltip.is-visible { display: block; }
         .line-explanation-title { color: #4271ae; font-weight: 700; }
+        .mobile-explanation-panel { display: none; }
+        .mobile-explanation-header { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-bottom: 1px solid var(--border); }
+        .mobile-explanation-title { min-width: 0; color: #4271ae; font-weight: 700; }
+        .mobile-explanation-close { width: 32px; height: 32px; margin-left: auto; padding: 0; box-shadow: none; font-size: 20px; }
+        .mobile-explanation-body { padding: 14px; overflow-y: auto; color: #333; font-size: 14px; line-height: 1.65; }
+        .mobile-explanation-edit { margin: 0 14px 14px; }
         .statusbar {
             display: flex;
             align-items: center;
@@ -580,6 +626,8 @@
         [data-theme="dark"] textarea { caret-color: #fff; }
         [data-theme="dark"] .output-container,
         [data-theme="dark"] .converted-code-panel { background: #292e35; }
+        [data-theme="dark"] .output-row-resizer { background: #303640; border-color: #444b55; }
+        [data-theme="dark"] .output-row-resizer::after { background: #69727e; }
         [data-theme="dark"] .panel-tab { color: #9ca5b0; }
         [data-theme="dark"] .panel-tab:hover { color: #fff; background: #2b3038; }
         [data-theme="dark"] .panel-tab.is-active { color: #fff; background: transparent; border-bottom-color: var(--accent); }
@@ -589,6 +637,8 @@
         [data-theme="dark"] .share-copy-button { border-color: #505864; }
         [data-theme="dark"] .execution-tooltip,
         [data-theme="dark"] .line-explanation-tooltip { color: #e4e8ed; background: rgba(36,41,49,.98); border-color: #59616d; }
+        [data-theme="dark"] .mobile-explanation-panel { color: var(--text); background: #242931; border-color: #59616d; }
+        [data-theme="dark"] .mobile-explanation-body { color: var(--text); }
         [data-theme="dark"] .statusbar { color: #a8b0ba; border-color: var(--border); }
         [data-theme="dark"] .step-counter-status { color: #c0c7d0; }
         @media (max-width: 700px) {
@@ -612,6 +662,22 @@
             .line-numbers { min-width: 3.4em; padding-right: 8px; padding-left: 4px; }
             .line-number { margin-right: -8px; margin-left: -4px; padding-right: 8px; padding-left: 4px; }
             .line-explanation-tooltip { font-size: 11px; }
+            .line-explanation-tooltip { display: none !important; }
+            .mobile-explanation-panel.is-visible {
+                position: fixed;
+                z-index: 2100;
+                right: 8px;
+                bottom: max(8px, env(safe-area-inset-bottom));
+                left: 8px;
+                display: flex;
+                max-height: min(48dvh, 360px);
+                flex-direction: column;
+                overflow: hidden;
+                background: rgba(255,255,255,.98);
+                border: 1px solid #aeb4ba;
+                border-radius: 10px;
+                box-shadow: 0 8px 30px rgba(0,0,0,.22);
+            }
             .code-highlight, textarea { padding-right: 12px; padding-left: 12px; }
             .statusbar { gap: 10px; padding: 0 7px; overflow: hidden; }
             .statusbar .status-right span:nth-last-child(-n+2) { display: none; }
@@ -696,6 +762,7 @@
             <pre id="python-tab-output" class="converted-code-panel" role="tabpanel" aria-labelledby="python-tab" hidden></pre>
             <pre id="javascript-tab-output" class="converted-code-panel" role="tabpanel" aria-labelledby="javascript-tab" hidden></pre>
         </div>
+        <div id="output-row-resizer" class="output-row-resizer" role="separator" aria-label="出力エリアと解析エリアの高さを調整" aria-orientation="horizontal" aria-valuemin="15" aria-valuemax="75" aria-valuenow="32" tabindex="0"></div>
         <div class="panel-header">
             <div class="panel-tabs" role="tablist" aria-label="解析表示の切り替え">
                 <button id="variables-tab" class="panel-tab is-active" type="button" role="tab" aria-selected="true" aria-controls="variable-diagram">VARIABLES</button>
@@ -737,6 +804,14 @@
 
     <div id="execution-tooltip" class="execution-tooltip" role="tooltip" aria-hidden="true"></div>
     <div id="line-explanation-tooltip" class="line-explanation-tooltip" role="tooltip" aria-hidden="true"></div>
+    <section id="mobile-explanation-panel" class="mobile-explanation-panel" role="dialog" aria-modal="false" aria-labelledby="mobile-explanation-title" aria-hidden="true">
+        <div class="mobile-explanation-header">
+            <div id="mobile-explanation-title" class="mobile-explanation-title"></div>
+            <button id="mobile-explanation-close" class="mobile-explanation-close" type="button" aria-label="解説を閉じる">×</button>
+        </div>
+        <div id="mobile-explanation-body" class="mobile-explanation-body"></div>
+        <button id="mobile-explanation-edit" class="mobile-explanation-edit" type="button">編集に戻る</button>
+    </section>
 
     <div id="settings-dialog" class="settings-dialog" role="dialog" aria-modal="true" aria-labelledby="settings-title" aria-hidden="true">
         <div class="settings-card">
@@ -815,8 +890,15 @@
             const flowchartDownload = document.getElementById('flowchart-download');
             const executionTooltip = document.getElementById('execution-tooltip');
             const lineExplanationTooltip = document.getElementById('line-explanation-tooltip');
+            const mobileExplanationPanel = document.getElementById('mobile-explanation-panel');
+            const mobileExplanationTitle = document.getElementById('mobile-explanation-title');
+            const mobileExplanationBody = document.getElementById('mobile-explanation-body');
+            const mobileExplanationClose = document.getElementById('mobile-explanation-close');
+            const mobileExplanationEdit = document.getElementById('mobile-explanation-edit');
             const editorContainer = document.querySelector('.editor-container');
             const editorShell = document.querySelector('.editor-shell');
+            const viewerPanel = document.querySelector('.viewer-panel');
+            const outputRowResizer = document.getElementById('output-row-resizer');
             const paneResizer = document.getElementById('pane-resizer');
             const undoButton = document.getElementById('undo-btn');
             const openButton = document.getElementById('open-btn');
@@ -1713,7 +1795,7 @@
 
             const setEditorWidth = (percent) => {
                 const safePercent = Math.min(80, Math.max(20, percent));
-                editorShell.style.flex = `0 0 calc(${safePercent}% - 6px)`;
+                editorShell.style.flex = `0 0 calc(${safePercent}% - 5px)`;
                 paneResizer.setAttribute('aria-valuenow', Math.round(safePercent));
             };
 
@@ -1746,6 +1828,49 @@
                 const current = Number(paneResizer.getAttribute('aria-valuenow'));
                 if (event.key === 'Home') setEditorWidth(50);
                 else setEditorWidth(current + (event.key === 'ArrowRight' ? 5 : -5));
+            });
+
+            const setOutputHeight = (percent) => {
+                const safePercent = Math.min(75, Math.max(15, percent));
+                const resizableHeight = Math.max(180, viewerPanel.clientHeight - 88);
+                const outputHeight = Math.round(resizableHeight * safePercent / 100);
+                viewerPanel.style.gridTemplateRows = `38px ${outputHeight}px 12px 38px minmax(0, 1fr)`;
+                outputRowResizer.setAttribute('aria-valuenow', Math.round(safePercent));
+            };
+
+            const resizeOutputFromPointer = (clientY) => {
+                const bounds = viewerPanel.getBoundingClientRect();
+                const resizableHeight = Math.max(180, viewerPanel.clientHeight - 88);
+                setOutputHeight(((clientY - bounds.top - 38) / resizableHeight) * 100);
+            };
+
+            outputRowResizer.addEventListener('pointerdown', (event) => {
+                outputRowResizer.setPointerCapture(event.pointerId);
+                outputRowResizer.classList.add('is-dragging');
+                document.body.classList.add('is-row-resizing');
+                resizeOutputFromPointer(event.clientY);
+            });
+            outputRowResizer.addEventListener('pointermove', (event) => {
+                if (outputRowResizer.hasPointerCapture(event.pointerId)) resizeOutputFromPointer(event.clientY);
+            });
+            outputRowResizer.addEventListener('pointerup', (event) => {
+                outputRowResizer.releasePointerCapture(event.pointerId);
+                outputRowResizer.classList.remove('is-dragging');
+                document.body.classList.remove('is-row-resizing');
+            });
+            outputRowResizer.addEventListener('pointercancel', () => {
+                outputRowResizer.classList.remove('is-dragging');
+                document.body.classList.remove('is-row-resizing');
+            });
+            outputRowResizer.addEventListener('keydown', (event) => {
+                if (!['ArrowUp', 'ArrowDown', 'Home'].includes(event.key)) return;
+                event.preventDefault();
+                const current = Number(outputRowResizer.getAttribute('aria-valuenow'));
+                if (event.key === 'Home') setOutputHeight(32);
+                else setOutputHeight(current + (event.key === 'ArrowDown' ? 5 : -5));
+            });
+            window.addEventListener('resize', () => {
+                if (viewerPanel.style.gridTemplateRows) setOutputHeight(Number(outputRowResizer.getAttribute('aria-valuenow')));
             });
 
             const escapeHtml = (text) => text
@@ -1990,6 +2115,8 @@
             const hideLineExplanation = () => {
                 lineExplanationTooltip.classList.remove('is-visible');
                 lineExplanationTooltip.setAttribute('aria-hidden', 'true');
+                mobileExplanationPanel.classList.remove('is-visible');
+                mobileExplanationPanel.setAttribute('aria-hidden', 'true');
             };
 
             const showLineExplanationAt = (event) => {
@@ -2016,6 +2143,21 @@
                     return;
                 }
 
+                const useMobilePanel = event.pointerType !== 'mouse' && window.matchMedia('(max-width: 700px)').matches;
+                if (useMobilePanel) {
+                    lineExplanationTooltip.classList.remove('is-visible');
+                    lineExplanationTooltip.setAttribute('aria-hidden', 'true');
+                    mobileExplanationTitle.textContent = explanation.title;
+                    mobileExplanationBody.textContent = explanation.description;
+                    editor.blur();
+                    hideVariableSuggestions();
+                    window.setTimeout(() => {
+                        mobileExplanationPanel.classList.add('is-visible');
+                        mobileExplanationPanel.setAttribute('aria-hidden', 'false');
+                    }, 120);
+                    return;
+                }
+
                 lineExplanationTooltip.innerHTML = `<div class="line-explanation-title">${escapeHtml(explanation.title)}</div><div>${escapeHtml(explanation.description)}</div>`;
                 lineExplanationTooltip.classList.add('is-visible');
                 lineExplanationTooltip.setAttribute('aria-hidden', 'false');
@@ -2039,6 +2181,11 @@
             });
             document.addEventListener('pointerdown', (event) => {
                 if (event.pointerType !== 'mouse' && event.target !== editor) hideLineExplanation();
+            });
+            mobileExplanationClose.addEventListener('click', hideLineExplanation);
+            mobileExplanationEdit.addEventListener('click', () => {
+                hideLineExplanation();
+                editor.focus();
             });
 
             let suggestionItems = [];
