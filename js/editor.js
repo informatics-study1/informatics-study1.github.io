@@ -372,6 +372,7 @@ const explainCodeLine = (source, lineNumber) => {
 };
 
 const hideLineExplanation = () => {
+    if (lineExplanationEnabled && window.matchMedia('(min-width: 701px)').matches) return;
     lineExplanationTooltip.classList.remove('is-visible');
     lineExplanationTooltip.setAttribute('aria-hidden', 'true');
 };
@@ -392,16 +393,11 @@ mobileExplanationModeButton.addEventListener('click', () => {
     setMobileExplanationMode(!mobileExplanationMode, mobileExplanationMode);
 });
 
-const showLineExplanationAt = (event) => {
+const showLineExplanationForLine = (lineIndex) => {
     if (!lineExplanationEnabled) {
         hideLineExplanation();
         return;
     }
-    const styles = getComputedStyle(editor);
-    const lineHeight = parseFloat(styles.lineHeight);
-    const paddingTop = parseFloat(styles.paddingTop);
-    const bounds = editor.getBoundingClientRect();
-    const lineIndex = Math.floor((event.clientY - bounds.top + editor.scrollTop - paddingTop) / lineHeight);
     const sourceLines = editor.value.split('\n');
     if (lineIndex < 0 || lineIndex >= sourceLines.length) {
         hideLineExplanation();
@@ -410,11 +406,10 @@ const showLineExplanationAt = (event) => {
     const syntaxError = validateSyntax(editor.value).get(lineIndex);
     const explanation = syntaxError
         ? { title: `${lineIndex + 1}行目：構文エラー`, description: syntaxError }
-        : explainCodeLine(sourceLines[lineIndex], lineIndex + 1);
-    if (!explanation) {
-        hideLineExplanation();
-        return;
-    }
+        : explainCodeLine(sourceLines[lineIndex], lineIndex + 1) || {
+            title: `${lineIndex + 1}行目：空行`,
+            description: 'この行では処理を行わない。'
+        };
 
     lineExplanationTooltip.innerHTML = `<div class="line-explanation-title">${escapeHtml(explanation.title)}</div><div>${escapeHtml(explanation.description)}</div>`;
     lineExplanationTooltip.classList.add('is-visible');
@@ -423,25 +418,23 @@ const showLineExplanationAt = (event) => {
         lineExplanationTooltip.style.inset = 'auto 8px max(8px, env(safe-area-inset-bottom)) 8px';
         return;
     }
-    lineExplanationTooltip.style.right = '';
-    lineExplanationTooltip.style.bottom = '';
-    const gap = 14;
-    const maxLeft = window.innerWidth - lineExplanationTooltip.offsetWidth - 10;
-    let top = event.clientY + gap;
-    if (top + lineExplanationTooltip.offsetHeight > window.innerHeight - 10) {
-        top = event.clientY - lineExplanationTooltip.offsetHeight - gap;
-    }
-    lineExplanationTooltip.style.left = `${Math.max(10, Math.min(event.clientX + gap, maxLeft))}px`;
-    lineExplanationTooltip.style.top = `${Math.max(10, top)}px`;
+    lineExplanationTooltip.removeAttribute('style');
 };
-editor.addEventListener('pointermove', (event) => {
-    if (event.pointerType === 'mouse') showLineExplanationAt(event);
-});
+
+const selectExplanationLineAt = (event) => {
+    const styles = getComputedStyle(editor);
+    const lineHeight = parseFloat(styles.lineHeight);
+    const paddingTop = parseFloat(styles.paddingTop);
+    const bounds = editor.getBoundingClientRect();
+    const lineIndex = Math.floor((event.clientY - bounds.top + editor.scrollTop - paddingTop) / lineHeight);
+    const sourceLines = editor.value.split('\n');
+    if (lineIndex < 0 || lineIndex >= sourceLines.length) return;
+    const lineStart = sourceLines.slice(0, lineIndex).reduce((length, line) => length + line.length + 1, 0);
+    editor.setSelectionRange(lineStart, lineStart);
+    updateCursorPosition();
+};
 editor.addEventListener('pointerup', (event) => {
-    if (event.pointerType !== 'mouse' && mobileExplanationMode) showLineExplanationAt(event);
-});
-editor.addEventListener('pointerleave', (event) => {
-    if (event.pointerType === 'mouse') hideLineExplanation();
+    if (event.pointerType !== 'mouse' && mobileExplanationMode) selectExplanationLineAt(event);
 });
 document.addEventListener('pointerdown', (event) => {
     if (event.pointerType !== 'mouse' && event.target !== editor && event.target !== lineExplanationTooltip) hideLineExplanation();
@@ -582,6 +575,7 @@ const updateActiveLine = () => {
     const paddingTop = parseFloat(styles.paddingTop);
     currentLineHighlight.style.height = `${lineHeight}px`;
     currentLineHighlight.style.top = `${paddingTop + currentLine * lineHeight - editor.scrollTop}px`;
+    showLineExplanationForLine(currentLine);
 };
 
 const updateCursorPosition = () => {
