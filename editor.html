@@ -297,6 +297,7 @@
             vertical-align: top;
         }
         .indent-guide.is-end { border-left-color: transparent; }
+        .indent-guide.is-continuing-branch { border-left-color: var(--guide-color); }
         .indent-guide.is-end::before,
         .indent-guide.is-end::after {
             position: absolute;
@@ -310,7 +311,7 @@
         }
         .indent-guide.is-end::after {
             top: 72%;
-            width: 48%;
+            width: 70%;
             border-top: 1px solid var(--guide-color);
         }
         textarea {
@@ -593,10 +594,11 @@
     </div>
     <div id="template-menu" class="template-menu" role="menu" aria-label="構文テンプレート" hidden>
         <div class="template-menu-title">挿入する構文を選択</div>
-        <button class="template-option" type="button" role="menuitem" data-template="if"><strong>条件分岐</strong><code>もし 条件 ならば:</code></button>
-        <button class="template-option" type="button" role="menuitem" data-template="if-else"><strong>条件分岐（それ以外）</strong><code>もし 条件 ならば: … そうでなければ:</code></button>
-        <button class="template-option" type="button" role="menuitem" data-template="for"><strong>回数指定の繰り返し</strong><code>i を 0 から 終了値 まで…</code></button>
-        <button class="template-option" type="button" role="menuitem" data-template="while"><strong>条件付き繰り返し</strong><code>条件 の間繰り返す:</code></button>
+        <button class="template-option" type="button" role="menuitem" data-template="if"><strong>条件分岐文</strong><code>もし 条件 ならば:</code></button>
+        <button class="template-option" type="button" role="menuitem" data-template="if-else"><strong>条件分岐文(二分岐文)</strong><code>もし 条件 ならば: … そうでなければ:</code></button>
+        <button class="template-option" type="button" role="menuitem" data-template="if-elif-else"><strong>条件分岐文(多分岐文)</strong><code>もし 条件1 ならば: … そうでなくもし 条件2 ならば:</code></button>
+        <button class="template-option" type="button" role="menuitem" data-template="for"><strong>順次繰り返し文</strong><code>i を 0 から 終了値 まで…</code></button>
+        <button class="template-option" type="button" role="menuitem" data-template="while"><strong>条件繰り返し文</strong><code>条件 の間繰り返す:</code></button>
         <button class="template-option" type="button" role="menuitem" data-template="print"><strong>値を表示</strong><code>表示する(値)</code></button>
     </div>
     <div class="editor-container">
@@ -1083,13 +1085,14 @@
                 const templates = {
                     if: `もし 条件 ならば:\n${indentation}    処理`,
                     'if-else': `もし 条件 ならば:\n${indentation}    処理\n${indentation}そうでなければ:\n${indentation}    処理`,
+                    'if-elif-else': `もし 条件1 ならば:\n${indentation}    処理1\n${indentation}そうでなくもし 条件2 ならば:\n${indentation}    処理2\n${indentation}そうでなければ:\n${indentation}    処理3`,
                     for: `i を 0 から 終了値 まで 1 ずつ増やしながら繰り返す:\n${indentation}    処理`,
                     while: `条件 の間繰り返す:\n${indentation}    処理`,
                     print: '表示する(値)'
                 };
                 const text = templates[templateName];
                 if (!text) return;
-                const placeholders = ['条件', '終了値', '値', '処理'];
+                const placeholders = ['条件1', '条件2', '条件', '終了値', '値', '処理1', '処理2', '処理3', '処理'];
                 const placeholder = placeholders
                     .map((label) => ({ label, index: text.indexOf(label) }))
                     .filter(({ index }) => index >= 0)
@@ -1330,7 +1333,7 @@
                     else if (isLoop(line.text)) type = 'loopStart';
                     else if (line.text === 'そうでなければ:') type = 'branch';
                     else if (/^表示する\s*\(/.test(line.text)) type = 'output';
-                    else if (/(?:入力|input)\s*\(/i.test(line.text)) type = 'input';
+                    else if (line.text.includes('【外部からの入力】') || /(?:入力|input)\s*\(/i.test(line.text)) type = 'input';
                     sourceNodeIndexes.set(sourceIndex, displayNodes.length);
                     displayNodes.push({ ...line, type, sourceIndex });
                     (loopEnds.get(sourceIndex) ?? []).forEach(() => {
@@ -1677,7 +1680,7 @@
                 return errors;
             };
 
-            const tokenPattern = /("(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\/\/[^\n]*|#[^\n]*|\b\d+(?:\.\d+)?\b|そうでなくもし|そうでなければ|ずつ増やしながら繰り返す|ずつ減らしながら繰り返す|の間繰り返す|整数乱数|要素数|整数|乱数|表示する|もし|ならば|かつ|または|でない|から|まで|を|←|==|!=|<=|>=|=|[+\-*/%<>]=?)/g;
+            const tokenPattern = /("(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\/\/[^\n]*|#[^\n]*|【外部からの入力】|\b\d+(?:\.\d+)?\b|そうでなくもし|そうでなければ|ずつ増やしながら繰り返す|ずつ減らしながら繰り返す|の間繰り返す|整数乱数|要素数|整数|乱数|表示する|もし|ならば|かつ|または|でない|から|まで|を|←|==|!=|<=|>=|=|[+\-*/%<>]=?)/g;
 
             const highlightSyntax = (source) => {
                 let lastIndex = 0;
@@ -1689,7 +1692,7 @@
                     if (token.startsWith('"') || token.startsWith("'")) tokenClass = 'token-string';
                     else if (token.startsWith('//') || token.startsWith('#')) tokenClass = 'token-comment';
                     else if (/^\d/.test(token)) tokenClass = 'token-number';
-                    else if (['表示する', '要素数', '整数', '乱数', '整数乱数'].includes(token)) tokenClass = 'token-function';
+                    else if (['表示する', '要素数', '整数', '乱数', '整数乱数', '【外部からの入力】'].includes(token)) tokenClass = 'token-function';
                     else if (/^(←|==|!=|<=|>=|=|[+\-*/%<>]=?)$/.test(token)) tokenClass = 'token-operator';
                     html += `<span class="${tokenClass}">${escapeHtml(token)}</span>`;
                     lastIndex = match.index + token.length;
@@ -1700,7 +1703,7 @@
             const updateHighlight = () => {
                 const syntaxErrors = validateSyntax(editor.value);
                 syntaxErrorStatus.textContent = syntaxErrors.size ? `構文エラー ${syntaxErrors.size}件` : '';
-                const guideColors = ['#65b7e8'];
+                const guideColors = ['#268cf2'];
                 const lines = editor.value.split('\n').map((line) => {
                     const indentation = line.match(/^(?: {4}|\t)+/)?.[0] ?? '';
                     return {
@@ -1711,17 +1714,32 @@
                     };
                 });
                 const nextDepths = Array(lines.length).fill(null);
+                const nextCodeLines = Array(lines.length).fill(null);
                 let nextCodeDepth = null;
+                let nextCodeLine = null;
                 for (let index = lines.length - 1; index >= 0; index -= 1) {
                     nextDepths[index] = nextCodeDepth;
-                    if (lines[index].hasCode) nextCodeDepth = lines[index].depth;
+                    nextCodeLines[index] = nextCodeLine;
+                    if (lines[index].hasCode) {
+                        nextCodeDepth = lines[index].depth;
+                        nextCodeLine = lines[index];
+                    }
                 }
                 const html = lines.map((info, lineIndex) => {
-                    const guides = Array.from({ length: info.depth }, (_, guideIndex) => {
+                    const guides = Array.from({ length: info.hasCode ? info.depth : 0 }, (_, guideIndex) => {
                         const depth = guideIndex + 1;
-                        const isEnd = info.hasCode && (nextDepths[lineIndex] === null || nextDepths[lineIndex] < depth);
+                        const nextDepth = nextDepths[lineIndex];
+                        const nextInfo = nextCodeLines[lineIndex];
+                        const nextText = nextInfo?.line.trim() ?? '';
+                        const continuesConditional = nextInfo
+                            && nextInfo.depth === depth - 1
+                            && /^(?:そうでなくもし(?:\s|$)|そうでなければ(?:\s*[：:]?)?$)/.test(nextText);
+                        const isEnd = info.hasCode
+                            && !continuesConditional
+                            && (nextDepth === null || nextDepth < depth);
                         const color = guideColors[guideIndex % guideColors.length];
-                        return `<span class="indent-guide${isEnd ? ' is-end' : ''}" style="--guide-color:${color}">    </span>`;
+                        const className = isEnd ? ' is-end' : continuesConditional ? ' is-continuing-branch' : '';
+                        return `<span class="indent-guide${className}" style="--guide-color:${color}">    </span>`;
                     }).join('');
                     const content = guides + highlightSyntax(info.line.slice(info.indentation.length));
                     const message = syntaxErrors.get(lineIndex);
@@ -1766,6 +1784,8 @@
 
                 match = text.match(/^表示する\((.*)\)$/);
                 if (match) return { title: `${lineNumber}行目：表示`, description: `「${match[1]}」の値を実行結果へ表示する処理である。` };
+                match = text.match(/^([^=!<>]+?)\s*(?:←|=)\s*【外部からの入力】$/);
+                if (match) return { title: `${lineNumber}行目：外部入力`, description: `外部から入力された値を判定し、整数なら整数型、実数なら実数型、それ以外なら文字列型として変数「${match[1].trim()}」へ代入する。` };
                 match = text.match(/^([^=!<>]+?)\s*(?:←|=)\s*([^=].*)$/);
                 if (match) {
                     const target = match[1].trim();
@@ -2148,6 +2168,18 @@
                 python_lines.append("import random")
             if re.search(r'\bmath\.', code):
                 python_lines.append("import math")
+            if "【外部からの入力】" in code:
+                python_lines.extend([
+                    "def __auto_input():",
+                    "    value = input()",
+                    "    try:",
+                    "        return int(value)",
+                    "    except ValueError:",
+                    "        try:",
+                    "            return float(value)",
+                    "        except ValueError:",
+                    "            return value"
+                ])
 
             def adjusted_range_value(value, adjustment):
                 value = value.strip()
@@ -2176,6 +2208,9 @@
                 # 表示関数の変換
                 if l.startswith("表示する("):
                     l = l.replace("表示する(", "print(")
+
+                # 外部からの入力
+                l = l.replace("【外部からの入力】", "__auto_input()")
 
                 # 要素数関数の変換
                 l = l.replace("要素数(", "len(")
@@ -2243,6 +2278,7 @@
         def transpile_to_javascript(code):
             def convert_expression(expression):
                 expression = expression.replace("←", "=")
+                expression = expression.replace("【外部からの入力】", "__autoInput()")
                 expression = expression.replace(" かつ ", " && ")
                 expression = expression.replace(" または ", " || ")
                 expression = expression.replace(" でない ", " !")
@@ -2263,6 +2299,10 @@
             javascript_source_map = []
             block_indents = []
             declared_names = set()
+
+            if "【外部からの入力】" in code:
+                javascript_lines.append("const __autoInput = () => { const raw = prompt(); if (raw === null) return ''; const value = raw.trim(); if (/^[+-]?\\d+$/.test(value)) return Number(value); if (/^[+-]?(?:\\d+\\.\\d*|\\.\\d+)$/.test(value)) return Number(value); return raw; };")
+                javascript_source_map.append(None)
 
             def append_javascript(line, source_line):
                 javascript_lines.append(line)
@@ -2506,6 +2546,8 @@
                 source_map.append(None)
             if re.search(r'\bmath\.', raw_code):
                 source_map.append(None)
+            if "【外部からの入力】" in raw_code:
+                source_map.extend([None] * 9)
             source_map.extend(range(1, len(raw_code.split('\n')) + 1))
             window.showPythonTab(python_code, json.dumps(source_map))
 
