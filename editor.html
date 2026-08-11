@@ -1348,6 +1348,8 @@
                     x: center,
                     y: 55 + index * 100
                 }));
+                const processLineLength = 28;
+                const processNodeWidth = 420;
                 const height = nodes.at(-1).y + 55;
                 const connectors = nodes.slice(0, -1).map((node, index) => {
                     const next = nodes[index + 1];
@@ -1394,8 +1396,7 @@
                     if (node.type === 'output') {
                         return `<g><path d="M ${center - 210} ${node.y} L ${center - 170} ${node.y - 32} H ${center + 165} A 32 32 0 0 1 ${center + 165} ${node.y + 32} H ${center - 170} Z"/>${textElement(node.text, center + 10, node.y)}</g>`;
                     }
-                    const processLineLength = 44;
-                    const nodeWidth = Math.min(660, Math.max(150, Math.min(node.text.length, processLineLength) * 14 + 36));
+                    const nodeWidth = node.type === 'terminal' ? 150 : processNodeWidth;
                     const radius = node.type === 'terminal' ? 32 : 0;
                     return `<g><rect x="${center - nodeWidth / 2}" y="${node.y - 32}" width="${nodeWidth}" height="64" rx="${radius}"/>${textElement(node.text, center, node.y, processLineLength)}</g>`;
                 }).join('');
