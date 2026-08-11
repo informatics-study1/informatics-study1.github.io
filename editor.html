@@ -125,8 +125,7 @@
             padding: 0;
             color: #444;
         }
-        .tool-icon-button svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
-        #undo-btn svg { stroke-width: 2.5; }
+        .tool-icon-button svg { display: block; width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
         .tool-icon-button.is-success { color: #198754; box-shadow: 0 0 0 2px rgba(25,135,84,.25), 0 0 2px 1px rgba(0,0,0,.25); }
         .settings-dialog { position: fixed; inset: 0; z-index: 1200; display: none; place-items: center; padding: 20px; background: rgba(0,0,0,.45); }
         .settings-dialog.is-open { display: grid; }
@@ -568,13 +567,13 @@
         </button>
         <input id="open-file-input" type="file" accept=".txt,.py,text/plain" hidden>
         <button id="save-btn" class="tool-icon-button" type="button" aria-label="テキストファイルとして保存" title="テキストファイルとして保存">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4"/><path d="M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/></svg>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2v13m0 0 4.5-4.5M12 15l-4.5-4.5"/><path d="M3 15v4a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-4"/></svg>
         </button>
         <button id="undo-btn" class="tool-icon-button" type="button" aria-label="元に戻す" title="元に戻す">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3 3 9l6 6M3 9h7c6 0 10 4 10 9 0 2-.4 3.5-1 4.5"/></svg>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 3-6 6 6 6"/><path d="M3 9h11a6 6 0 0 1 0 12h-3"/></svg>
         </button>
         <button id="editor-copy-btn" class="tool-icon-button" type="button" aria-label="エディタのコードをコピー" title="エディタのコードをコピー">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="11" height="11" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="13" height="13" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/></svg>
         </button>
         <button id="template-btn" class="tool-icon-button" type="button" aria-label="構文テンプレート" title="構文テンプレート" aria-haspopup="menu" aria-expanded="false">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6 2.5 12 8 18"/><path d="m16 6 5.5 6-5.5 6"/><path d="m14 3-4 18"/></svg>
