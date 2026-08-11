@@ -262,6 +262,8 @@
             background: rgba(66, 139, 202, .10);
             pointer-events: none;
         }
+        .source-correspondence-highlight { position: absolute; z-index: 0; right: 0; left: 0; background: rgba(38, 140, 242, .18); pointer-events: none; }
+        .line-number.is-corresponding { color: #1769aa; background: #dbeeff; font-weight: 600; }
         .code-highlight {
             position: absolute;
             inset: 0;
@@ -430,6 +432,9 @@
             white-space: pre;
         }
         .converted-code-panel:empty::before { color: #6c757d; }
+        .converted-code-line { display: inline-block; min-width: 100%; border-radius: 2px; }
+        .converted-code-line[data-source-line] { cursor: pointer; }
+        .converted-code-line[data-source-line]:hover, .converted-code-line.is-corresponding { background: rgba(66, 139, 202, .16); }
         #python-tab-output:empty::before { content: 'Pythonへ変換すると，表示されます'; }
         #javascript-tab-output:empty::before { content: 'JavaScriptへ変換すると，表示されます'; }
         .output-copy-button { display: inline-grid; place-items: center; width: 30px; height: 28px; margin-left: auto; padding: 0; box-shadow: none; }
@@ -599,6 +604,7 @@
             <pre id="line-numbers" class="line-numbers" aria-hidden="true">1</pre>
             <div class="code-pane">
             <div id="current-line-highlight" class="current-line-highlight" aria-hidden="true"></div>
+            <div id="source-correspondence-highlight" class="source-correspondence-highlight" aria-hidden="true" hidden></div>
             <pre id="code-highlight" class="code-highlight" aria-hidden="true"></pre>
             <textarea id="code-editor" aria-label="コードエディタ" spellcheck="false"></textarea>
             <div id="variable-suggestions" class="variable-suggestions" role="listbox" aria-label="変数名の入力候補" hidden></div>
@@ -715,6 +721,7 @@
             const syntaxErrorStatus = document.getElementById('syntax-error-status');
             const lineNumbers = document.getElementById('line-numbers');
             const currentLineHighlight = document.getElementById('current-line-highlight');
+            const sourceCorrespondenceHighlight = document.getElementById('source-correspondence-highlight');
             const codeHighlight = document.getElementById('code-highlight');
             const variableSuggestions = document.getElementById('variable-suggestions');
             const cursorPosition = document.getElementById('cursor-position');
@@ -815,6 +822,8 @@
             };
 
             const selectOutputView = (view) => {
+                sourceCorrespondenceHighlight.hidden = true;
+                lineNumbers.querySelector('.line-number.is-corresponding')?.classList.remove('is-corresponding');
                 const showPython = view === 'python';
                 const showJavaScript = view === 'javascript';
                 outputArea.hidden = showPython || showJavaScript;
@@ -830,18 +839,67 @@
             };
 
             window.showOutputTab = () => selectOutputView('output');
-            window.showPythonTab = (pythonCode) => {
-                pythonTabOutput.textContent = pythonCode;
+            const renderConvertedCode = (panel, code, sourceMapJson) => {
+                let sourceMap = [];
+                try {
+                    sourceMap = JSON.parse(String(sourceMapJson || '[]'));
+                } catch (error) {
+                    console.warn('変換コードの行対応情報を読み込めませんでした。', error);
+                }
+                panel.innerHTML = String(code).split('\n').map((line, index) => {
+                    const sourceLine = Number(sourceMap[index]);
+                    const attribute = sourceLine > 0 ? ` data-source-line="${sourceLine}"` : '';
+                    return `<span class="converted-code-line"${attribute}>${escapeHtml(line)}</span>`;
+                }).join('\n');
+            };
+            window.showPythonTab = (pythonCode, sourceMapJson) => {
+                renderConvertedCode(pythonTabOutput, pythonCode, sourceMapJson);
                 selectOutputView('python');
                 pythonTabOutput.scrollTop = 0;
                 pythonTabOutput.scrollLeft = 0;
             };
-            window.showJavaScriptTab = (javascriptCode) => {
-                javascriptTabOutput.textContent = javascriptCode;
+            window.showJavaScriptTab = (javascriptCode, sourceMapJson) => {
+                renderConvertedCode(javascriptTabOutput, javascriptCode, sourceMapJson);
                 selectOutputView('javascript');
                 javascriptTabOutput.scrollTop = 0;
                 javascriptTabOutput.scrollLeft = 0;
             };
+            const clearSourceCorrespondence = () => {
+                sourceCorrespondenceHighlight.hidden = true;
+                lineNumbers.querySelector('.line-number.is-corresponding')?.classList.remove('is-corresponding');
+                document.querySelector('.converted-code-line.is-corresponding')?.classList.remove('is-corresponding');
+            };
+            const showSourceCorrespondence = (convertedLine, scrollToLine = false) => {
+                const sourceLine = Number(convertedLine?.dataset.sourceLine);
+                if (!sourceLine) {
+                    clearSourceCorrespondence();
+                    return;
+                }
+                clearSourceCorrespondence();
+                convertedLine.classList.add('is-corresponding');
+                const styles = getComputedStyle(editor);
+                const lineHeight = parseFloat(styles.lineHeight);
+                const paddingTop = parseFloat(styles.paddingTop);
+                if (scrollToLine) {
+                    editor.scrollTop = Math.max(0, paddingTop + (sourceLine - 1) * lineHeight - editor.clientHeight / 2);
+                    syncEditorOverlays();
+                }
+                sourceCorrespondenceHighlight.style.height = `${lineHeight}px`;
+                sourceCorrespondenceHighlight.style.top = `${paddingTop + (sourceLine - 1) * lineHeight - editor.scrollTop}px`;
+                sourceCorrespondenceHighlight.hidden = false;
+                lineNumbers.children[sourceLine - 1]?.classList.add('is-corresponding');
+            };
+            [pythonTabOutput, javascriptTabOutput].forEach((panel) => {
+                panel.addEventListener('pointermove', (event) => {
+                    if (event.pointerType === 'mouse') showSourceCorrespondence(event.target.closest('.converted-code-line'));
+                });
+                panel.addEventListener('pointerup', (event) => {
+                    if (event.pointerType !== 'mouse') showSourceCorrespondence(event.target.closest('.converted-code-line'), true);
+                });
+                panel.addEventListener('pointerleave', (event) => {
+                    if (event.pointerType === 'mouse') clearSourceCorrespondence();
+                });
+            });
             outputTab.addEventListener('click', () => selectOutputView('output'));
 
             const selectAnalysisView = (view) => {
@@ -1692,11 +1750,11 @@
                 }
 
                 let match = text.match(/^もし\s+(.+)\s+ならば:$/);
-                if (match) return { title: `${lineNumber}行目：条件分岐`, description: `条件式「${match[1]}」が真の場合に，インデントされた処理を実行する条件分岐である。` };
+                if (match) return { title: `${lineNumber}行目：条件分岐`, description: `条件式「${match[1]}」が真の場合に，インデントされた処理を実行する。` };
                 match = text.match(/^そうでなくもし\s+(.+)\s+ならば:$/);
-                if (match) return { title: `${lineNumber}行目：追加の条件分岐`, description: `それまでの条件式が偽であり，条件「${match[1]}」が真の場合に処理を実行する条件分岐である。` };
+                if (match) return { title: `${lineNumber}行目：追加の条件分岐`, description: `それまでの条件式が偽であり，条件「${match[1]}」が真の場合に処理を実行する。` };
                 if (text === 'そうでなければ:') {
-                    return { title: `${lineNumber}行目：それ以外の分岐`, description: 'それまでの条件式がすべて偽だった場合に，インデントされた処理を実行する分岐である。' };
+                    return { title: `${lineNumber}行目：それ以外の分岐`, description: 'それまでの条件式がすべて偽だった場合に，インデントされた処理を実行する。' };
                 }
 
                 match = text.match(/^(.+)\s*を\s*(.+)\s*から\s*(.+)\s*まで\s*(.+)\s*ずつ増やしながら繰り返す:$/);
@@ -1890,6 +1948,7 @@
             });
 
             editor.addEventListener('input', (event) => {
+                clearSourceCorrespondence();
                 updateLineNumbers();
                 updateHighlight();
                 syncEditorOverlays();
@@ -1913,6 +1972,7 @@
             editor.addEventListener('scroll', () => {
                 hideLineExplanation();
                 hideVariableSuggestions();
+                clearSourceCorrespondence();
                 syncEditorOverlays();
                 updateActiveLine();
             });
@@ -2083,8 +2143,18 @@
         def transpile_to_python(code, instrument=True):
             """共通テスト仕様のプログラムをPythonコードに変換"""
             lines = code.split('\n')
-            # 乱数や数学関数を使用可能にするため，標準モジュールを事前にインポート
-            python_lines = ["import random", "import math"]
+            python_lines = []
+            if "整数乱数(" in code or "乱数()" in code:
+                python_lines.append("import random")
+            if re.search(r'\bmath\.', code):
+                python_lines.append("import math")
+
+            def adjusted_range_value(value, adjustment):
+                value = value.strip()
+                if re.fullmatch(r'[+-]?\d+', value):
+                    return str(int(value) + adjustment)
+                operator = "+" if adjustment > 0 else "-"
+                return f"({value}) {operator} 1"
             
             for line_number, line in enumerate(lines, start=1):
                 indent = len(line) - len(line.lstrip())
@@ -2128,15 +2198,18 @@
                 # 繰り返しの変換（増加）
                 m_for = re.match(r'^(.+)\s*を\s*(.+)\s*から\s*(.+)\s*まで\s*(.+)\s*ずつ増やしながら繰り返す:$', l)
                 if m_for:
-                    var, start, end, step = m_for.groups()
-                    loop_range = f"range({start}, ({end}) + 1, {step})"
+                    var, start, end, step = (part.strip() for part in m_for.groups())
+                    exclusive_end = adjusted_range_value(end, 1)
+                    loop_range = f"range({start}, {exclusive_end}, {step})"
                     l = f"for {var} in __track_iter({line_number}, {loop_range}):" if instrument else f"for {var} in {loop_range}:"
                 
                 # 繰り返しの変換（減少）
                 m_for_dec = re.match(r'^(.+)\s*を\s*(.+)\s*から\s*(.+)\s*まで\s*(.+)\s*ずつ減らしながら繰り返す:$', l)
                 if m_for_dec:
-                    var, start, end, step = m_for_dec.groups()
-                    loop_range = f"range({start}, ({end}) - 1, -({step}))"
+                    var, start, end, step = (part.strip() for part in m_for_dec.groups())
+                    exclusive_end = adjusted_range_value(end, -1)
+                    negative_step = str(-int(step)) if re.fullmatch(r'[+-]?\d+', step) else f"-({step})"
+                    loop_range = f"range({start}, {exclusive_end}, {negative_step})"
                     l = f"for {var} in __track_iter({line_number}, {loop_range}):" if instrument else f"for {var} in {loop_range}:"
 
                 # 繰り返しの変換（条件ループ）
@@ -2187,23 +2260,29 @@
                 return expression
 
             javascript_lines = []
+            javascript_source_map = []
             block_indents = []
             declared_names = set()
 
-            for raw_line in code.split('\n'):
+            def append_javascript(line, source_line):
+                javascript_lines.append(line)
+                javascript_source_map.append(source_line)
+
+            source_lines = code.split('\n')
+            for line_number, raw_line in enumerate(source_lines, start=1):
                 indent = len(raw_line) - len(raw_line.lstrip())
                 text = raw_line.strip()
                 if not text:
-                    javascript_lines.append("")
+                    append_javascript("", line_number)
                     continue
 
                 is_branch = text.startswith("そうでなくもし ") or text == "そうでなければ:"
                 while block_indents and (indent < block_indents[-1] or (indent == block_indents[-1] and not is_branch)):
-                    javascript_lines.append(" " * block_indents.pop() + "}")
+                    append_javascript(" " * block_indents.pop() + "}", line_number)
 
                 if text.startswith(("#", "//")):
                     comment = text[1:] if text.startswith("#") else text[2:]
-                    javascript_lines.append(" " * indent + "//" + comment)
+                    append_javascript(" " * indent + "//" + comment, line_number)
                     continue
 
                 match_if = re.match(r'^もし\s+(.+)\s+ならば:$', text)
@@ -2214,50 +2293,50 @@
 
                 if match_if:
                     condition = convert_expression(match_if.group(1))
-                    javascript_lines.append(" " * indent + f"if ({condition}) {{")
+                    append_javascript(" " * indent + f"if ({condition}) {{", line_number)
                     block_indents.append(indent)
                 elif match_elif:
                     if block_indents and block_indents[-1] == indent:
                         block_indents.pop()
                     condition = convert_expression(match_elif.group(1))
-                    javascript_lines.append(" " * indent + f"}} else if ({condition}) {{")
+                    append_javascript(" " * indent + f"}} else if ({condition}) {{", line_number)
                     block_indents.append(indent)
                 elif text == "そうでなければ:":
                     if block_indents and block_indents[-1] == indent:
                         block_indents.pop()
-                    javascript_lines.append(" " * indent + "} else {")
+                    append_javascript(" " * indent + "} else {", line_number)
                     block_indents.append(indent)
                 elif match_for:
                     variable, start, end, step = match_for.groups()
                     variable = variable.strip()
                     declared_names.add(variable)
-                    javascript_lines.append(" " * indent + f"for (let {variable} = {convert_expression(start)}; {variable} <= {convert_expression(end)}; {variable} += {convert_expression(step)}) {{")
+                    append_javascript(" " * indent + f"for (let {variable} = {convert_expression(start)}; {variable} <= {convert_expression(end)}; {variable} += {convert_expression(step)}) {{", line_number)
                     block_indents.append(indent)
                 elif match_for_dec:
                     variable, start, end, step = match_for_dec.groups()
                     variable = variable.strip()
                     declared_names.add(variable)
-                    javascript_lines.append(" " * indent + f"for (let {variable} = {convert_expression(start)}; {variable} >= {convert_expression(end)}; {variable} -= {convert_expression(step)}) {{")
+                    append_javascript(" " * indent + f"for (let {variable} = {convert_expression(start)}; {variable} >= {convert_expression(end)}; {variable} -= {convert_expression(step)}) {{", line_number)
                     block_indents.append(indent)
                 elif match_while:
                     condition = convert_expression(match_while.group(1))
-                    javascript_lines.append(" " * indent + f"while ({condition}) {{")
+                    append_javascript(" " * indent + f"while ({condition}) {{", line_number)
                     block_indents.append(indent)
                 elif text.startswith("表示する(") and text.endswith(")"):
                     arguments = convert_expression(text[len("表示する("):-1])
-                    javascript_lines.append(" " * indent + f"console.log({arguments});")
+                    append_javascript(" " * indent + f"console.log({arguments});", line_number)
                 else:
                     statement = convert_expression(text)
                     assignment = re.match(r'^([^\W\d]\w*)\s*=\s*(.+)$', statement)
                     if assignment and assignment.group(1) not in declared_names:
                         declared_names.add(assignment.group(1))
                         statement = f"let {assignment.group(1)} = {assignment.group(2)}"
-                    javascript_lines.append(" " * indent + statement.rstrip(";") + ";")
+                    append_javascript(" " * indent + statement.rstrip(";") + ";", line_number)
 
             while block_indents:
-                javascript_lines.append(" " * block_indents.pop() + "}")
+                append_javascript(" " * block_indents.pop() + "}", len(source_lines))
 
-            return "\n".join(javascript_lines)
+            return "\n".join(javascript_lines), javascript_source_map
 
         def create_execution_stats(code):
             stats = {}
@@ -2422,12 +2501,18 @@
         def convert_to_python(event):
             raw_code = document["code-editor"].value
             python_code = transpile_to_python(raw_code, instrument=False)
-            window.showPythonTab(python_code)
+            source_map = []
+            if "整数乱数(" in raw_code or "乱数()" in raw_code:
+                source_map.append(None)
+            if re.search(r'\bmath\.', raw_code):
+                source_map.append(None)
+            source_map.extend(range(1, len(raw_code.split('\n')) + 1))
+            window.showPythonTab(python_code, json.dumps(source_map))
 
         def convert_to_javascript(event):
             raw_code = document["code-editor"].value
-            javascript_code = transpile_to_javascript(raw_code)
-            window.showJavaScriptTab(javascript_code)
+            javascript_code, source_map = transpile_to_javascript(raw_code)
+            window.showJavaScriptTab(javascript_code, json.dumps(source_map))
 
         document["run-btn"].bind("click", run_code)
         document["step-btn"].bind("click", step_code)
