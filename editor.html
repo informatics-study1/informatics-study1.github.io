@@ -24,6 +24,7 @@
             --sans: 'Noto Sans JP', Meiryo, sans-serif;
             --mono: Monaco, Menlo, 'Ubuntu Mono', Consolas, source-code-pro, monospace;
             --editor-font-size: 18px;
+            --editor-line-height: 22px;
         }
         * { box-sizing: border-box; }
         body {
@@ -157,45 +158,6 @@
         .qr-message { margin: 12px 0 0; color: var(--muted); font-size: 12px; }
         .qr-error { color: #b42318; }
         .qr-close { position: absolute; top: 8px; right: 8px; padding: 3px 9px; box-shadow: none; font-size: 20px; }
-        .python-dialog {
-            position: fixed;
-            inset: 0;
-            z-index: 1100;
-            display: none;
-            place-items: center;
-            padding: 24px;
-            background: rgba(0,0,0,.42);
-        }
-        .python-dialog.is-open { display: grid; }
-        .python-card {
-            display: flex;
-            width: min(820px, 94vw);
-            height: min(650px, 82vh);
-            flex-direction: column;
-            overflow: hidden;
-            background: #fff;
-            border-radius: 8px;
-            box-shadow: 0 12px 35px rgba(0,0,0,.28);
-        }
-        .python-card-header { display: flex; align-items: center; padding: 12px 16px; border-bottom: 1px solid #ddd; }
-        .python-card-header h2 { margin: 0; font-size: 17px; }
-        .python-card-actions { display: flex; gap: 8px; margin-left: auto; }
-        .python-code-output {
-            position: static;
-            z-index: auto;
-            flex: 1;
-            width: 100%;
-            height: auto;
-            padding: 16px 18px;
-            border: 0;
-            color: #222;
-            background: #e9ecef;
-            caret-color: #222;
-            font: 14px/1.5 var(--mono);
-            white-space: pre;
-            resize: none;
-        }
-        .python-code-output::selection { color: #222; background: rgba(66,139,202,.28); }
         button:active { transform: translateY(1px); }
         .editor-container { display: flex; flex: 1; min-height: 0; flex-direction: row; gap: 0; padding-bottom: 6px; }
         .editor-shell {
@@ -239,7 +201,7 @@
             color: #9a9a9a;
             background: #f4f4f4;
             border-right: 1px solid #ddd;
-            font: var(--editor-font-size)/1.2 var(--mono);
+            font: var(--editor-font-size)/var(--editor-line-height) var(--mono);
             font-weight: 300;
             text-align: right;
             user-select: none;
@@ -292,7 +254,7 @@
             color: #212529;
             background: transparent;
             pointer-events: none;
-            font: var(--editor-font-size)/1.2 var(--mono);
+            font: var(--editor-font-size)/var(--editor-line-height) var(--mono);
             font-weight: 300;
             letter-spacing: .03em;
             white-space: pre;
@@ -308,7 +270,7 @@
             --guide-color: #79c0ff;
             position: relative;
             display: inline-block;
-            height: 1.2em;
+            height: var(--editor-line-height);
             border-left: 1px solid var(--guide-color);
             box-sizing: border-box;
             vertical-align: top;
@@ -344,7 +306,7 @@
             background: transparent;
             caret-color: #222;
             tab-size: 4;
-            font: var(--editor-font-size)/1.2 var(--mono);
+            font: var(--editor-font-size)/var(--editor-line-height) var(--mono);
             font-weight: 300;
             letter-spacing: .03em;
             white-space: pre;
@@ -380,7 +342,6 @@
             letter-spacing: .08em;
         }
         .panel-header::before { content: '>_'; margin-right: 9px; color: var(--green); }
-        .panel-hint { display: none; }
         .panel-tabs { display: flex; align-self: stretch; gap: 2px; }
         .panel-tab {
             height: 100%;
@@ -537,7 +498,7 @@
             .code-highlight, textarea { padding-right: 12px; padding-left: 12px; }
             .statusbar { gap: 10px; padding: 0 7px; overflow: hidden; }
             .statusbar span:nth-last-child(-n+2) { display: none; }
-            .settings-dialog, .qr-dialog, .python-dialog { padding: 10px; }
+            .settings-dialog, .qr-dialog { padding: 10px; }
         }
     </style>
 </head>
@@ -587,7 +548,6 @@
                 <button id="python-tab" class="panel-tab" type="button" role="tab" aria-selected="false" aria-controls="python-tab-output">PYTHON</button>
                 <button id="javascript-tab" class="panel-tab" type="button" role="tab" aria-selected="false" aria-controls="javascript-tab-output">JAVASCRIPT</button>
             </div>
-            <span id="output-panel-hint" class="panel-hint">実行結果</span>
             <button id="output-copy-button" class="output-copy-button" type="button" aria-label="変換結果をクリップボードにコピー" title="クリップボードにコピー" hidden>
                 <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="11" height="11" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>
             </button>
@@ -610,7 +570,6 @@
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4"/><path d="M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/></svg>
                 </button>
             </div>
-            <span id="analysis-panel-hint" class="panel-hint">変数と配列の対応図</span>
         </div>
         <div class="lower-view-stack">
             <div id="variable-diagram" class="variable-diagram-container" role="tabpanel" aria-labelledby="variables-tab"></div>
@@ -666,19 +625,6 @@
         </div>
     </div>
 
-    <div id="python-dialog" class="python-dialog" role="dialog" aria-modal="true" aria-labelledby="python-title" aria-hidden="true">
-        <div class="python-card">
-            <div class="python-card-header">
-                <h2 id="python-title">Python変換結果</h2>
-                <div class="python-card-actions">
-                    <button id="python-copy" type="button">コピー</button>
-                    <button id="python-close" type="button">閉じる</button>
-                </div>
-            </div>
-            <textarea id="python-code-output" class="python-code-output" readonly aria-label="Python変換結果"></textarea>
-        </div>
-    </div>
-
     <!-- 変換・実行エンジン -->
     <script>
         (async () => {
@@ -689,7 +635,6 @@
             const pythonTabOutput = document.getElementById('python-tab-output');
             const javascriptTab = document.getElementById('javascript-tab');
             const javascriptTabOutput = document.getElementById('javascript-tab-output');
-            const outputPanelHint = document.getElementById('output-panel-hint');
             const outputCopyButton = document.getElementById('output-copy-button');
             const stepButton = document.getElementById('step-btn');
             const autoStepButton = document.getElementById('auto-step-btn');
@@ -707,7 +652,6 @@
             const flowchartZoomReset = document.getElementById('flowchart-zoom-reset');
             const flowchartZoomIn = document.getElementById('flowchart-zoom-in');
             const flowchartDownload = document.getElementById('flowchart-download');
-            const analysisPanelHint = document.getElementById('analysis-panel-hint');
             const executionTooltip = document.getElementById('execution-tooltip');
             const lineExplanationTooltip = document.getElementById('line-explanation-tooltip');
             const editorContainer = document.querySelector('.editor-container');
@@ -725,11 +669,6 @@
             const shareUrlLink = document.getElementById('share-url-link');
             const shareCopyButton = document.getElementById('share-copy-button');
             const qrDownloadButton = document.getElementById('qr-download-button');
-            const pythonDialog = document.getElementById('python-dialog');
-            const pythonTitle = document.getElementById('python-title');
-            const pythonCodeOutput = document.getElementById('python-code-output');
-            const pythonCopy = document.getElementById('python-copy');
-            const pythonClose = document.getElementById('python-close');
             const settingsButton = document.getElementById('settings-btn');
             const settingsDialog = document.getElementById('settings-dialog');
             const settingsClose = document.getElementById('settings-close');
@@ -743,6 +682,7 @@
             const applyEditorFontSize = (size) => {
                 const safeSize = Math.min(28, Math.max(12, Number(size) || 18));
                 document.documentElement.style.setProperty('--editor-font-size', `${safeSize}px`);
+                document.documentElement.style.setProperty('--editor-line-height', `${Math.round(safeSize * 1.2)}px`);
                 fontSizeRange.value = String(safeSize);
                 fontSizeOutput.value = `${safeSize} px`;
             };
@@ -800,9 +740,6 @@
                 pythonTab.setAttribute('aria-selected', String(showPython));
                 javascriptTab.setAttribute('aria-selected', String(showJavaScript));
                 outputCopyButton.hidden = !showPython && !showJavaScript;
-                outputPanelHint.textContent = showPython
-                    ? 'Python変換結果'
-                    : showJavaScript ? 'JavaScript変換結果' : '実行結果';
             };
 
             window.showOutputTab = () => selectOutputView('output');
@@ -829,7 +766,6 @@
                 variablesTab.setAttribute('aria-selected', String(!showFlowchart));
                 flowchartTab.setAttribute('aria-selected', String(showFlowchart));
                 flowchartZoomControls.hidden = !showFlowchart;
-                analysisPanelHint.textContent = showFlowchart ? '入力中のプログラムから生成' : '変数と配列の対応図';
             };
             variablesTab.addEventListener('click', () => selectAnalysisView('variables'));
 
@@ -977,34 +913,6 @@
                 showButtonSuccess(editorCopyButton, 'コピーしました');
             });
 
-            const closePythonDialog = () => {
-                pythonDialog.classList.remove('is-open');
-                pythonDialog.setAttribute('aria-hidden', 'true');
-            };
-
-            window.showCodeConversion = (convertedCode, title) => {
-                pythonTitle.textContent = title;
-                pythonCodeOutput.value = convertedCode;
-                pythonDialog.classList.add('is-open');
-                pythonDialog.setAttribute('aria-hidden', 'false');
-                pythonCodeOutput.scrollTop = 0;
-                pythonCodeOutput.scrollLeft = 0;
-                pythonCodeOutput.focus();
-            };
-
-            pythonCopy.addEventListener('click', async () => {
-                try {
-                    await copyText(pythonCodeOutput.value);
-                    showButtonSuccess(pythonCopy, 'コピーしました');
-                } catch (error) {
-                    window.prompt('変換結果をコピーしてください', pythonCodeOutput.value);
-                }
-            });
-            pythonClose.addEventListener('click', closePythonDialog);
-            pythonDialog.addEventListener('click', (event) => {
-                if (event.target === pythonDialog) closePythonDialog();
-            });
-
             let shareDialogOpener = shareButton;
             const closeQrDialog = () => {
                 qrDialog.classList.remove('is-open');
@@ -1074,7 +982,6 @@
             });
             document.addEventListener('keydown', (event) => {
                 if (event.key === 'Escape' && qrDialog.classList.contains('is-open')) closeQrDialog();
-                if (event.key === 'Escape' && pythonDialog.classList.contains('is-open')) closePythonDialog();
             });
 
             window.showVariableDiagram = (jsonText) => {
@@ -1216,8 +1123,8 @@
                     else if (/(?:入力|input)\s*\(/i.test(line.text)) type = 'input';
                     sourceNodeIndexes.set(sourceIndex, displayNodes.length);
                     displayNodes.push({ ...line, type, sourceIndex });
-                    (loopEnds.get(sourceIndex) ?? []).forEach((loopSourceIndex) => {
-                        displayNodes.push({ text: 'ループ', type: 'loopEnd', loopSourceIndex });
+                    (loopEnds.get(sourceIndex) ?? []).forEach(() => {
+                        displayNodes.push({ text: 'ループ', type: 'loopEnd' });
                     });
                 });
                 displayNodes.push({ text: 'おわり', type: 'terminal' });
@@ -1520,7 +1427,7 @@
                 lineExplanationTooltip.setAttribute('aria-hidden', 'true');
             };
 
-            editor.addEventListener('pointermove', (event) => {
+            const showLineExplanationAt = (event) => {
                 if (!lineExplanationEnabled) {
                     hideLineExplanation();
                     return;
@@ -1552,8 +1459,19 @@
                 }
                 lineExplanationTooltip.style.left = `${Math.max(10, Math.min(event.clientX + gap, maxLeft))}px`;
                 lineExplanationTooltip.style.top = `${Math.max(10, top)}px`;
+            };
+            editor.addEventListener('pointermove', (event) => {
+                if (event.pointerType === 'mouse') showLineExplanationAt(event);
             });
-            editor.addEventListener('pointerleave', hideLineExplanation);
+            editor.addEventListener('pointerup', (event) => {
+                if (event.pointerType !== 'mouse') showLineExplanationAt(event);
+            });
+            editor.addEventListener('pointerleave', (event) => {
+                if (event.pointerType === 'mouse') hideLineExplanation();
+            });
+            document.addEventListener('pointerdown', (event) => {
+                if (event.pointerType !== 'mouse' && event.target !== editor) hideLineExplanation();
+            });
 
             editor.addEventListener('input', () => {
                 updateLineNumbers();
