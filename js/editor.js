@@ -331,7 +331,7 @@ const explainCodeLine = (source, lineNumber) => {
     match = text.match(/^表示する\((.*)\)$/);
     if (match) return { title: `${lineNumber}行目：表示`, description: `「${match[1]}」の値を実行結果へ表示する処理である。` };
     match = text.match(/^([^=!<>]+?)\s*(?:←|=)\s*【外部からの入力】$/);
-    if (match) return { title: `${lineNumber}行目：外部入力`, description: `外部から入力された文字列を変数「${match[1].trim()}」へ代入する。` };
+    if (match) return { title: `${lineNumber}行目：外部入力`, description: `外部から入力された値を判定し，整数・実数または文字列として変数「${match[1].trim()}」へ代入する。` };
     match = text.match(/^([^=!<>]+?)\s*(?:←|=)\s*([^=].*)$/);
     if (match) {
         const target = match[1].trim();
