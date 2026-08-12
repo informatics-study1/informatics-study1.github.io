@@ -12,7 +12,10 @@ const selectOutputView = (view) => {
     outputTab.setAttribute('aria-selected', String(!showPython && !showJavaScript));
     pythonTab.setAttribute('aria-selected', String(showPython));
     javascriptTab.setAttribute('aria-selected', String(showJavaScript));
-    outputCopyButton.hidden = !showPython && !showJavaScript;
+    const copyLabel = showPython || showJavaScript ? '変換結果をコピー' : '実行結果をコピー';
+    outputCopyButton.hidden = false;
+    outputCopyButton.setAttribute('aria-label', `${copyLabel}してクリップボードに保存`);
+    outputCopyButton.title = copyLabel;
 };
 
 window.showOutputTab = () => selectOutputView('output');
