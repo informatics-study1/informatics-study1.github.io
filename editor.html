@@ -202,6 +202,17 @@
             """共通テスト仕様のプログラムをPythonコードに変換"""
             lines = code.split('\n')
             python_lines = []
+            if "【外部からの入力】" in code:
+                python_lines.extend([
+                    "def __auto_input(value):",
+                    "    try:",
+                    "        return int(value)",
+                    "    except ValueError:",
+                    "        try:",
+                    "            return float(value)",
+                    "        except ValueError:",
+                    "            return value"
+                ])
             if "整数乱数(" in code or "乱数()" in code:
                 python_lines.append("import random")
             if re.search(r'\bmath\.', code):
@@ -236,7 +247,7 @@
                     l = l.replace("表示する(", "print(")
 
                 # 外部からの入力
-                l = l.replace("【外部からの入力】", "input()")
+                l = l.replace("【外部からの入力】", "__auto_input(input())")
 
                 # 要素数関数の変換
                 l = l.replace("要素数(", "len(")
@@ -308,7 +319,7 @@
         def transpile_to_javascript(code):
             def convert_expression(expression):
                 expression = expression.replace("←", "=")
-                expression = expression.replace("【外部からの入力】", "prompt()")
+                expression = expression.replace("【外部からの入力】", "__autoInput(prompt())")
                 expression = expression.replace(" かつ ", " && ")
                 expression = expression.replace(" または ", " || ")
                 expression = expression.replace(" でない ", " !")
@@ -331,6 +342,20 @@
             javascript_source_map = []
             block_indents = []
             declared_names = set()
+
+            if "【外部からの入力】" in code:
+                javascript_lines.append("const __autoInput = (value) => {")
+                javascript_source_map.append(None)
+                javascript_lines.append("    if (typeof value !== 'string') return value;")
+                javascript_source_map.append(None)
+                javascript_lines.append("    if (/^[+-]?\\d+$/.test(value.trim())) return Number.parseInt(value, 10);")
+                javascript_source_map.append(None)
+                javascript_lines.append("    if (/^[+-]?(?:\\d+\\.?\\d*|\\.\\d+)(?:[eE][+-]?\\d+)?$/.test(value.trim())) return Number(value);")
+                javascript_source_map.append(None)
+                javascript_lines.append("    return value;")
+                javascript_source_map.append(None)
+                javascript_lines.append("};")
+                javascript_source_map.append(None)
 
 
             def append_javascript(line, source_line):
@@ -570,11 +595,9 @@
         def convert_to_python(event):
             raw_code = document["code-editor"].value
             python_code = transpile_to_python(raw_code, instrument=False)
-            source_map = []
-            if "整数乱数(" in raw_code or "乱数()" in raw_code:
-                source_map.append(None)
-            if re.search(r'\bmath\.', raw_code):
-                source_map.append(None)
+            generated_line_count = len(python_code.split('\n'))
+            source_line_count = len(raw_code.split('\n'))
+            source_map = [None] * max(0, generated_line_count - source_line_count)
             source_map.extend(range(1, len(raw_code.split('\n')) + 1))
             window.showPythonTab(python_code, json.dumps(source_map))
 
