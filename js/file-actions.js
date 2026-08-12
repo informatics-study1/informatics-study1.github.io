@@ -107,11 +107,10 @@ const copyText = async (text) => {
     if (!copied) throw new Error('Clipboard copy failed');
 };
 outputCopyButton.addEventListener('click', async () => {
-    const code = pythonTabOutput.hidden
-        ? javascriptTabOutput.textContent
-        : pythonTabOutput.textContent;
-    if (!code) return;
-    await copyText(code);
+    const text = !outputArea.hidden
+        ? outputArea.textContent
+        : (pythonTabOutput.hidden ? javascriptTabOutput.textContent : pythonTabOutput.textContent);
+    await copyText(text || '');
     showButtonSuccess(outputCopyButton, 'コピーしました');
 });
 editorCopyButton.addEventListener('click', async () => {
