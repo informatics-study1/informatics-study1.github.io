@@ -67,7 +67,51 @@ const editorTabAdd = document.getElementById('editor-tab-add');
 let nextDocumentNumber = 2;
 let activeDocumentId = 1;
 const documents = [{ id: 1, name: 'untitled.txt', content: '' }];
+const AUTOSAVE_STORAGE_KEY = 'editor-autosave-v1';
+let autosaveTimer = null;
 const activeDocument = () => documents.find((item) => item.id === activeDocumentId);
+const saveWorkspace = () => {
+    const current = activeDocument();
+    if (current) current.content = editor.value;
+    try {
+        localStorage.setItem(AUTOSAVE_STORAGE_KEY, JSON.stringify({
+            documents: documents.map(({ id, name, content }) => ({ id, name, content })),
+            activeDocumentId,
+            nextDocumentNumber
+        }));
+    } catch (error) {
+        console.warn('自動保存に失敗しました。', error);
+    }
+};
+const scheduleWorkspaceSave = () => {
+    window.clearTimeout(autosaveTimer);
+    autosaveTimer = window.setTimeout(saveWorkspace, 200);
+};
+const restoreWorkspace = () => {
+    try {
+        const saved = JSON.parse(localStorage.getItem(AUTOSAVE_STORAGE_KEY) || 'null');
+        if (!saved || !Array.isArray(saved.documents) || !saved.documents.length) return false;
+        const restored = saved.documents.filter((item) =>
+            item && Number.isFinite(Number(item.id)) && typeof item.name === 'string' && typeof item.content === 'string'
+        );
+        if (!restored.length) return false;
+        documents.splice(0, documents.length, ...restored.map((item) => ({
+            id: Number(item.id),
+            name: item.name,
+            content: item.content
+        })));
+        activeDocumentId = documents.some((item) => item.id === Number(saved.activeDocumentId))
+            ? Number(saved.activeDocumentId)
+            : documents[0].id;
+        nextDocumentNumber = Math.max(2, Number(saved.nextDocumentNumber) || 2);
+        editor.value = activeDocument().content;
+        renderEditorTabs();
+        return true;
+    } catch (error) {
+        console.warn('自動保存データを復元できませんでした。', error);
+        return false;
+    }
+};
 const renderEditorTabs = () => {
     editorTabs.querySelectorAll('.editor-tab').forEach((tab) => tab.remove());
     documents.forEach((item) => {
@@ -93,6 +137,7 @@ const loadDocument = (documentId) => {
     editor.value = item.content;
     renderEditorTabs();
     editor.dispatchEvent(new Event('input', { bubbles: true }));
+    scheduleWorkspaceSave();
     editor.focus();
 };
 const addDocument = (name = `untitled-${nextDocumentNumber++}.txt`, content = '') => {
@@ -104,6 +149,7 @@ const addDocument = (name = `untitled-${nextDocumentNumber++}.txt`, content = ''
     editor.value = content;
     renderEditorTabs();
     editor.dispatchEvent(new Event('input', { bubbles: true }));
+    scheduleWorkspaceSave();
     editor.focus();
 };
 const closeDocument = (documentId) => {
@@ -120,6 +166,7 @@ const closeDocument = (documentId) => {
         editor.focus();
     }
     renderEditorTabs();
+    scheduleWorkspaceSave();
 };
 editorTabs.addEventListener('click', (event) => {
     const tab = event.target.closest('.editor-tab');
@@ -130,6 +177,7 @@ editorTabs.addEventListener('click', (event) => {
 });
 editorTabAdd.addEventListener('click', () => addDocument());
 renderEditorTabs();
+window.addEventListener('pagehide', saveWorkspace);
 
 const FONT_SIZE_STORAGE_KEY = 'editor-font-size';
 const DARK_MODE_STORAGE_KEY = 'dark-mode-enabled';
