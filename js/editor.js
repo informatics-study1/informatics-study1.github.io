@@ -411,7 +411,7 @@ const showLineExplanationForLine = (lineIndex) => {
             description: 'この行では処理を行わない。'
         };
 
-    lineExplanationTooltip.innerHTML = `<div class="line-explanation-title">${escapeHtml(explanation.title)}</div><div>${escapeHtml(explanation.description)}</div>`;
+    lineExplanationTooltip.innerHTML = `<div class="line-explanation-title">プログラムの解説</div><div class="line-explanation-content"><strong>${escapeHtml(explanation.title)}</strong> — ${escapeHtml(explanation.description)}</div>`;
     lineExplanationTooltip.classList.add('is-visible');
     lineExplanationTooltip.setAttribute('aria-hidden', 'false');
     if (mobileExplanationMode) {
@@ -533,6 +533,7 @@ variableSuggestions.addEventListener('pointerdown', (event) => {
 editor.addEventListener('input', (event) => {
     const current = activeDocument();
     if (current) current.content = editor.value;
+    scheduleWorkspaceSave();
     clearSourceCorrespondence();
     updateLineNumbers();
     updateHighlight();
