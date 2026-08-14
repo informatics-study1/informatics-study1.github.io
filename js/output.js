@@ -19,6 +19,75 @@ const selectOutputView = (view) => {
 };
 
 window.showOutputTab = () => selectOutputView('output');
+
+window.showExecutionError = (errorJson) => {
+    let error;
+    try {
+        error = JSON.parse(String(errorJson));
+    } catch (parseError) {
+        console.warn('エラー情報を読み込めませんでした。', parseError);
+        return;
+    }
+
+    const card = document.createElement('section');
+    card.className = 'execution-error-card';
+    card.setAttribute('aria-label', '実行エラーの説明');
+
+    const header = document.createElement('div');
+    header.className = 'execution-error-header';
+    const typeBadge = document.createElement('span');
+    typeBadge.className = 'execution-error-badge';
+    typeBadge.textContent = error.type || 'Error';
+    header.appendChild(typeBadge);
+    if (error.line) {
+        const lineBadge = document.createElement('span');
+        lineBadge.className = 'execution-error-badge execution-error-line';
+        lineBadge.textContent = `📍 ${error.line}行目`;
+        header.appendChild(lineBadge);
+    }
+    card.appendChild(header);
+
+    const technicalMessage = document.createElement('div');
+    technicalMessage.className = 'execution-error-message';
+    technicalMessage.textContent = error.detail || '実行中にエラーが発生しました。';
+    card.appendChild(technicalMessage);
+
+    if (error.source) {
+        const source = document.createElement('div');
+        source.className = 'execution-error-source';
+        const label = document.createElement('strong');
+        label.textContent = '該当: ';
+        const code = document.createElement('code');
+        code.textContent = error.source;
+        source.append(label, code);
+        card.appendChild(source);
+    }
+
+    const hint = document.createElement('div');
+    hint.className = 'execution-error-hint';
+    const explanation = document.createElement('p');
+    explanation.className = 'execution-error-explanation';
+    explanation.textContent = `💡 ${error.explanation}`;
+    const advice = document.createElement('p');
+    advice.textContent = error.advice;
+    hint.append(explanation, advice);
+    card.appendChild(hint);
+
+    if (error.traceback) {
+        const details = document.createElement('details');
+        details.className = 'execution-error-details';
+        const summary = document.createElement('summary');
+        summary.textContent = '詳しいエラー情報を見る';
+        const trace = document.createElement('pre');
+        trace.textContent = error.traceback;
+        details.append(summary, trace);
+        card.appendChild(details);
+    }
+
+    outputArea.appendChild(card);
+    outputArea.scrollTop = outputArea.scrollHeight;
+};
+
 const renderConvertedCode = (panel, code, sourceMapJson) => {
     let sourceMap = [];
     try {
