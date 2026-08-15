@@ -1,11 +1,9 @@
 (async () => {
-    restoreWorkspace();
     const sharedCode = new URLSearchParams(window.location.hash.slice(1)).get('code');
     if (sharedCode) {
         try {
             editor.value = await decodeCode(sharedCode);
             activeDocument().content = editor.value;
-            scheduleWorkspaceSave();
         } catch (error) {
             console.warn('共有URLからプログラムを読み込めませんでした。', error);
         }
