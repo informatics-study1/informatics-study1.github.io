@@ -533,7 +533,6 @@ variableSuggestions.addEventListener('pointerdown', (event) => {
 editor.addEventListener('input', (event) => {
     const current = activeDocument();
     if (current) current.content = editor.value;
-    scheduleWorkspaceSave();
     clearSourceCorrespondence();
     updateLineNumbers();
     updateHighlight();
@@ -585,3 +584,4 @@ const updateCursorPosition = () => {
     cursorPosition.textContent = `行 ${lines.length}，列 ${lines.at(-1).length + 1}`;
     updateActiveLine();
 };
+
