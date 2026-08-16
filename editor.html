@@ -10,7 +10,7 @@
     <meta property="og:locale" content="ja_JP">
     <meta property="og:title" content="共通テスト用プログラム表記対応エディタ">
     <meta property="og:description" content="大学入学共通テスト「情報I」のプログラム表記を、ブラウザ上で実行・ステップ実行・可視化できる無料エディタです。">
-    <title>共通テスト用プログラム表記対応エディタ｜実行・可視化</title>
+    <title>共通テスト用プログラム表記対応エディタ</title>
     <link rel="icon" type="image/png" href="favicon.png">
     <script type="application/ld+json">
     {
@@ -276,6 +276,12 @@
                 # 要素数関数の変換
                 l = l.replace("要素数(", "len(")
 
+                # 配列の末尾に0を追加
+                l = re.sub(r'末尾追加\(([^()]+)\)', r'\1.append(0)', l)
+
+                # 配列の末尾の要素を削除
+                l = re.sub(r'末尾削除\(([^()]+)\)', r'\1.pop()', l)
+
                 # 最大値・最小値関数の変換
                 l = l.replace("最大値(", "max(")
                 l = l.replace("最小値(", "min(")
@@ -357,6 +363,8 @@
                     expression
                 )
                 expression = re.sub(r'要素数\(([^()]+)\)', r'(\1).length', expression)
+                expression = re.sub(r'末尾追加\(([^()]+)\)', r'(\1).push(0)', expression)
+                expression = re.sub(r'末尾削除\(([^()]+)\)', r'(\1).pop()', expression)
                 expression = expression.replace("最大値(", "Math.max(")
                 expression = expression.replace("最小値(", "Math.min(")
                 expression = re.sub(r'整数\(([^()]+)\)', r'Math.trunc(\1)', expression)
