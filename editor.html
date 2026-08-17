@@ -260,6 +260,9 @@
 
                 # 代入演算子「←」の変換
                 l = l.replace("←", "=")
+
+                # 整数商演算子「÷」の変換
+                l = l.replace("÷", "//")
                 
                 # 論理演算子の変換
                 l = l.replace(" かつ ", " and ")
@@ -349,6 +352,20 @@
         def transpile_to_javascript(code):
             def convert_expression(expression):
                 expression = expression.replace("←", "=")
+                # JavaScriptには整数商演算子がないため、単純な項同士の除算を
+                # Pythonの // と同じ切り下げになるよう Math.floor へ変換する。
+                floor_division_operand = r'(?:[+-]?\s*[A-Za-z_$\u0080-\uffff][\w$]*(?:\[[^\[\]]+\])?|[+-]?\s*\d+(?:\.\d+)?|\([^()]+\))'
+                floor_division_pattern = rf'({floor_division_operand})\s*÷\s*({floor_division_operand})'
+                while "÷" in expression:
+                    match = re.search(floor_division_pattern, expression)
+                    if not match:
+                        break
+                    converted = (
+                        expression[:match.start()]
+                        + f'Math.floor(({match.group(1)}) / ({match.group(2)}))'
+                        + expression[match.end():]
+                    )
+                    expression = converted
                 expression = expression.replace("【外部からの入力】", "__autoInput(prompt())")
                 expression = expression.replace(" かつ ", " && ")
                 expression = expression.replace(" または ", " || ")
