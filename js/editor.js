@@ -92,7 +92,7 @@ const validateSyntax = (code) => {
     return errors;
 };
 
-const tokenPattern = /("(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\/\/[^\n]*|#[^\n]*|【外部からの入力】|\b\d+(?:\.\d+)?\b|そうでなくもし|そうでなければ|ずつ増やしながら繰り返す|ずつ減らしながら繰り返す|の間繰り返す|整数乱数|最大値|最小値|要素数|整数|乱数|表示する|もし|ならば|かつ|または|でない|から|まで|を|←|==|!=|<=|>=|=|[+\-*/%<>]=?)/g;
+const tokenPattern = /("(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\/\/[^\n]*|#[^\n]*|【外部からの入力】|\b\d+(?:\.\d+)?\b|そうでなくもし|そうでなければ|ずつ増やしながら繰り返す|ずつ減らしながら繰り返す|の間繰り返す|整数乱数|最大値|最小値|要素数|整数|乱数|表示する|もし|ならば|かつ|または|でない|から|まで|を|←|÷|==|!=|<=|>=|=|[+\-*/%<>]=?)/g;
 
 const highlightSyntax = (source) => {
     let lastIndex = 0;
@@ -105,7 +105,7 @@ const highlightSyntax = (source) => {
         else if (token.startsWith('//') || token.startsWith('#')) tokenClass = 'token-comment';
         else if (/^\d/.test(token)) tokenClass = 'token-number';
         else if (['表示する', '要素数', '整数', '乱数', '整数乱数', '最大値', '最小値', '【外部からの入力】'].includes(token)) tokenClass = 'token-function';
-        else if (/^(←|==|!=|<=|>=|=|[+\-*/%<>]=?)$/.test(token)) tokenClass = 'token-operator';
+        else if (/^(←|÷|==|!=|<=|>=|=|[+\-*/%<>]=?)$/.test(token)) tokenClass = 'token-operator';
         html += `<span class="${tokenClass}">${escapeHtml(token)}</span>`;
         lastIndex = match.index + token.length;
     }
@@ -225,7 +225,7 @@ const saveEditorAsPng = () => {
             else if (token.startsWith('//') || token.startsWith('#')) tokenClass = 'token-comment';
             else if (/^\d/.test(token)) tokenClass = 'token-number';
             else if (['表示する', '要素数', '整数', '乱数', '整数乱数', '最大値', '最小値', '【外部からの入力】'].includes(token)) tokenClass = 'token-function';
-            else if (/^(←|==|!=|<=|>=|=|[+\-*/%<>]=?)$/.test(token)) tokenClass = 'token-operator';
+            else if (/^(←|÷|==|!=|<=|>=|=|[+\-*/%<>]=?)$/.test(token)) tokenClass = 'token-operator';
             x = drawText(token, x, y, tokenColors[tokenClass]);
             lastIndex = match.index + token.length;
         }
@@ -342,7 +342,7 @@ const explainCodeLine = (source, lineNumber) => {
         const isLiteral = isNumericLiteral
             || /^(?:true|false|True|False|None)$/.test(expression)
             || isStringLiteral;
-        const requiresCalculation = !isLiteral && /(?:[+\-*/%()]|==|!=|<=|>=|<|>)/.test(expression);
+        const requiresCalculation = !isLiteral && /(?:[+\-*/%÷()]|==|!=|<=|>=|<|>)/.test(expression);
         const valueType = isNumericLiteral ? '数値' : isStringLiteral ? '文字列' : '値';
         const displayedValue = isStringLiteral ? expression.slice(1, -1) : expression;
         const typeSuffix = isNumericLiteral ? '（数値）' : isStringLiteral ? '（文字列）' : '';
