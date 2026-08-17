@@ -512,6 +512,13 @@
             arrays = []
             array_ids = {}
 
+            def display_value(value):
+                # 文字列は言語リファレンスの表記に合わせてダブルクォートで囲む。
+                # json.dumpsを使い、文字列中の引用符や改行も安全にエスケープする。
+                if isinstance(value, str):
+                    return json.dumps(value, ensure_ascii=False)
+                return repr(value)
+
             for name, value in namespace.items():
                 if name.startswith(("__", "$")) or name in ("random", "math"):
                     continue
@@ -523,7 +530,7 @@
                         array_ids[object_id] = array_id
                         arrays.append({
                             "id": array_id,
-                            "values": [repr(item) for item in value]
+                            "values": [display_value(item) for item in value]
                         })
                     variables.append({
                         "name": name,
@@ -534,7 +541,7 @@
                     variables.append({
                         "name": name,
                         "type": "scalar",
-                        "value": repr(value)
+                        "value": display_value(value)
                     })
 
             return {
