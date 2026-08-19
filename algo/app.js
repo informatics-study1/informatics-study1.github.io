@@ -7,13 +7,18 @@ const elements = {
   arrayInput: document.querySelector('#arrayInput'),
   applyArray: document.querySelector('#applyArrayButton'),
   arrayError: document.querySelector('#arrayInputError'),
+  algorithms: document.querySelectorAll('input[name="algorithm"]'),
+  algorithmTitle: document.querySelector('#algorithmTitle'),
+  algorithmTipTitle: document.querySelector('#algorithmTipTitle'),
+  algorithmTipText: document.querySelector('#algorithmTipText'),
   directions: document.querySelectorAll('input[name="direction"]'),
-  directionHint: document.querySelector('#directionHint'),
+  displayModes: document.querySelectorAll('input[name="displayMode"]'),
   speed: document.querySelector('#speedRange'),
   speedOutput: document.querySelector('#speedOutput'),
   comparison: document.querySelector('#comparisonCount'),
   swaps: document.querySelector('#swapCount'),
   message: document.querySelector('#processMessage'),
+  variableMessage: document.querySelector('#variableMessage'),
 };
 
 let values = [];
@@ -23,7 +28,7 @@ let stepIndex = 0;
 let comparisonCount = 0;
 let swapCount = 0;
 let timer = null;
-let visualState = { active: [], sorted: [], swapping: false };
+let visualState = { active: [], sorted: [], swapping: false, variables: {} };
 
 const speedNames = ['とても遅い', 'ゆっくり', 'ふつう', 'はやい', '最速'];
 const speedDelays = [1200, 850, 520, 280, 120];
@@ -32,7 +37,7 @@ function randomValues(size) {
   return Array.from({ length: size }, () => Math.floor(Math.random() * 76) + 18);
 }
 
-function buildSteps(source, direction) {
+function buildBubbleSteps(source, direction) {
   const work = [...source];
   const result = [];
   if (direction === 'rtl') {
@@ -40,14 +45,15 @@ function buildSteps(source, direction) {
       let changed = false;
       const sorted = Array.from({ length: start }, (_, i) => i);
       for (let i = work.length - 1; i > start; i--) {
-        result.push({ type: 'compare', indices: [i - 1, i], values: [...work], sorted });
+        const variables = { i: start, j: i, 'j-1': i - 1 };
+        result.push({ type: 'compare', indices: [i - 1, i], values: [...work], sorted, variables });
         if (work[i - 1] > work[i]) {
           [work[i - 1], work[i]] = [work[i], work[i - 1]];
           changed = true;
-          result.push({ type: 'swap', indices: [i - 1, i], values: [...work], sorted });
+          result.push({ type: 'swap', indices: [i - 1, i], values: [...work], sorted, variables });
         }
       }
-      result.push({ type: 'settle', indices: [], values: [...work], sorted: [...sorted, start], settledIndex: start });
+      result.push({ type: 'settle', indices: [], values: [...work], sorted: [...sorted, start], settledIndex: start, variables: { i: start } });
       if (!changed) {
         result.push({ type: 'done', indices: [], values: [...work], sorted: work.map((_, i) => i) });
         return result;
@@ -58,14 +64,15 @@ function buildSteps(source, direction) {
       let changed = false;
       const sorted = Array.from({ length: work.length - end - 1 }, (_, i) => end + 1 + i);
       for (let i = 0; i < end; i++) {
-        result.push({ type: 'compare', indices: [i, i + 1], values: [...work], sorted });
+        const variables = { i: end, j: i, 'j+1': i + 1 };
+        result.push({ type: 'compare', indices: [i, i + 1], values: [...work], sorted, variables });
         if (work[i] > work[i + 1]) {
           [work[i], work[i + 1]] = [work[i + 1], work[i]];
           changed = true;
-          result.push({ type: 'swap', indices: [i, i + 1], values: [...work], sorted });
+          result.push({ type: 'swap', indices: [i, i + 1], values: [...work], sorted, variables });
         }
       }
-      result.push({ type: 'settle', indices: [], values: [...work], sorted: [end, ...sorted], settledIndex: end });
+      result.push({ type: 'settle', indices: [], values: [...work], sorted: [end, ...sorted], settledIndex: end, variables: { i: end } });
       if (!changed) {
         result.push({ type: 'done', indices: [], values: [...work], sorted: work.map((_, i) => i) });
         return result;
@@ -76,12 +83,150 @@ function buildSteps(source, direction) {
   return result;
 }
 
+function buildSelectionSteps(source, direction) {
+  const work = [...source];
+  const result = [];
+
+  if (direction === 'rtl') {
+    for (let end = work.length - 1; end > 0; end--) {
+      let selected = end;
+      const sorted = Array.from({ length: work.length - end - 1 }, (_, i) => end + 1 + i);
+      for (let i = end - 1; i >= 0; i--) {
+        result.push({ type: 'compare', indices: [selected, i], values: [...work], sorted, variables: { i: end, j: i, max: selected } });
+        if (work[i] > work[selected]) selected = i;
+      }
+      if (selected !== end) {
+        [work[selected], work[end]] = [work[end], work[selected]];
+        result.push({ type: 'swap', indices: [selected, end], values: [...work], sorted, variables: { i: end, max: selected } });
+      }
+      result.push({ type: 'settle', indices: [], values: [...work], sorted: [end, ...sorted], settledIndex: end, variables: { i: end } });
+    }
+  } else {
+    for (let start = 0; start < work.length - 1; start++) {
+      let selected = start;
+      const sorted = Array.from({ length: start }, (_, i) => i);
+      for (let i = start + 1; i < work.length; i++) {
+        result.push({ type: 'compare', indices: [selected, i], values: [...work], sorted, variables: { i: start, j: i, min: selected } });
+        if (work[i] < work[selected]) selected = i;
+      }
+      if (selected !== start) {
+        [work[selected], work[start]] = [work[start], work[selected]];
+        result.push({ type: 'swap', indices: [selected, start], values: [...work], sorted, variables: { i: start, min: selected } });
+      }
+      result.push({ type: 'settle', indices: [], values: [...work], sorted: [...sorted, start], settledIndex: start, variables: { i: start } });
+    }
+  }
+
+  result.push({ type: 'done', indices: [], values: [...work], sorted: work.map((_, i) => i) });
+  return result;
+}
+
+function buildInsertionSteps(source, direction) {
+  const work = [...source];
+  const result = [];
+
+  if (direction === 'rtl') {
+    for (let start = work.length - 2; start >= 0; start--) {
+      const insertedValue = work[start];
+      const sorted = Array.from({ length: work.length - start - 1 }, (_, i) => start + 1 + i);
+      let index = start;
+      while (index < work.length - 1) {
+        const variables = { i: start, j: index, 'j+1': index + 1 };
+        result.push({ type: 'compare', indices: [index, index + 1], values: [...work], sorted, variables });
+        if (work[index] <= work[index + 1]) break;
+        [work[index], work[index + 1]] = [work[index + 1], work[index]];
+        result.push({ type: 'swap', indices: [index, index + 1], values: [...work], sorted, variables });
+        index++;
+      }
+      result.push({
+        type: 'settle',
+        indices: [],
+        values: [...work],
+        sorted: [start, ...sorted],
+        settledIndex: index,
+        variables: { i: start, j: index },
+        message: `${insertedValue} を右側の整列済み部分に挿入しました。`,
+      });
+    }
+  } else {
+    for (let end = 1; end < work.length; end++) {
+      const insertedValue = work[end];
+      const sorted = Array.from({ length: end }, (_, i) => i);
+      let index = end;
+      while (index > 0) {
+        const variables = { i: end, j: index, 'j-1': index - 1 };
+        result.push({ type: 'compare', indices: [index - 1, index], values: [...work], sorted, variables });
+        if (work[index - 1] <= work[index]) break;
+        [work[index - 1], work[index]] = [work[index], work[index - 1]];
+        result.push({ type: 'swap', indices: [index - 1, index], values: [...work], sorted, variables });
+        index--;
+      }
+      result.push({
+        type: 'settle',
+        indices: [],
+        values: [...work],
+        sorted: [...sorted, end],
+        settledIndex: index,
+        variables: { i: end, j: index },
+        message: `${insertedValue} を左側の整列済み部分に挿入しました。`,
+      });
+    }
+  }
+
+  result.push({ type: 'done', indices: [], values: [...work], sorted: work.map((_, i) => i) });
+  return result;
+}
+
+function selectedAlgorithm() {
+  return document.querySelector('input[name="algorithm"]:checked').value;
+}
+
+function buildSteps(source, direction) {
+  const algorithm = selectedAlgorithm();
+  if (algorithm === 'selection') return buildSelectionSteps(source, direction);
+  if (algorithm === 'insertion') return buildInsertionSteps(source, direction);
+  return buildBubbleSteps(source, direction);
+}
+
+function updateAlgorithmDescription() {
+  const algorithm = selectedAlgorithm();
+  const descriptions = {
+    bubble: {
+      englishName: 'Bubble',
+      name: 'バブルソート',
+      text: '隣り合う2つの値を順に比較し、左の値が大きければ入れ替える整列方法です。左から走査すると最大値が右端へ、右から走査すると最小値が左端へ確定します。この処理を交換がなくなるまで繰り返します。',
+    },
+    selection: {
+      englishName: 'Selection',
+      name: '選択ソート',
+      text: '未整列の範囲から最小値または最大値を探し、端の値と交換する整列方法です。左から走査すると最小値が左端へ、右から走査すると最大値が右端へ順に確定します。',
+    },
+    insertion: {
+      englishName: 'Insertion',
+      name: '挿入ソート',
+      text: '値を1つずつ取り出し、すでに整列した範囲の適切な位置へ挿入する整列方法です。左から走査すると左側へ、右から走査すると右側へ整列済みの範囲を広げます。',
+    },
+  };
+  const description = descriptions[algorithm];
+  elements.algorithmTitle.textContent = description.name;
+  elements.algorithmTipTitle.textContent = `${description.name}とは？`;
+  elements.algorithmTipText.textContent = description.text;
+  document.title = `${description.englishName} Lab — ${description.name}可視化`;
+}
+
 function selectedDirection() {
   return document.querySelector('input[name="direction"]:checked').value;
 }
 
+function selectedDisplayMode() {
+  return document.querySelector('input[name="displayMode"]:checked').value;
+}
+
 function render() {
+  const displayMode = selectedDisplayMode();
   const max = Math.max(...values);
+  elements.bars.classList.toggle('view-cards', displayMode === 'cards');
+  elements.bars.classList.toggle('view-bars', displayMode === 'bars');
   elements.bars.replaceChildren(...values.map((value, index) => {
     const item = document.createElement('div');
     item.className = 'bar-item';
@@ -90,13 +235,26 @@ function render() {
     const label = document.createElement('span');
     label.className = 'bar-value';
     label.textContent = value;
+    const variableBadges = document.createElement('span');
+    variableBadges.className = 'variable-badges';
+    Object.entries(visualState.variables)
+      .filter(([, position]) => position === index)
+      .forEach(([name]) => {
+        const badge = document.createElement('code');
+        badge.textContent = name;
+        variableBadges.append(badge);
+      });
     const bar = document.createElement('div');
     bar.className = 'bar';
-    bar.style.height = `${Math.max(12, (value / max) * 88)}%`;
-    item.append(label, bar);
+    bar.style.setProperty('--bar-height', `${Math.max(12, (value / max) * 88)}%`);
+    bar.append(variableBadges, label);
+    const indexLabel = document.createElement('code');
+    indexLabel.className = 'index-label';
+    indexLabel.textContent = `[${index}]`;
+    item.append(bar, indexLabel);
     return item;
   }));
-  elements.bars.setAttribute('aria-label', `現在の配列: ${values.join(', ')}`);
+  elements.bars.setAttribute('aria-label', `現在の配列（${displayMode === 'cards' ? 'カード' : '棒グラフ'}表示）: ${values.join(', ')}`);
 }
 
 function updateStats() {
@@ -112,7 +270,12 @@ function applyNextStep() {
     active: step.indices,
     sorted: step.sorted,
     swapping: step.type === 'swap',
+    variables: step.variables || {},
   };
+  const variableEntries = Object.entries(visualState.variables);
+  elements.variableMessage.textContent = variableEntries.length
+    ? variableEntries.map(([name, index]) => `${name} = ${index}`).join('　')
+    : 'ループ処理が完了しました。';
 
   if (step.type === 'compare') {
     comparisonCount++;
@@ -123,7 +286,7 @@ function applyNextStep() {
     const [a, b] = step.indices;
     elements.message.textContent = `順番を交換：${values[a]} ←→ ${values[b]}`;
   } else if (step.type === 'settle') {
-    elements.message.textContent = `${values[step.settledIndex]} の位置が確定しました。`;
+    elements.message.textContent = step.message || `${values[step.settledIndex]} の位置が確定しました。`;
   } else {
     finish();
     return;
@@ -158,8 +321,9 @@ function pause() {
 
 function finish() {
   pause();
-  visualState = { active: [], sorted: values.map((_, i) => i), swapping: false };
+  visualState = { active: [], sorted: values.map((_, i) => i), swapping: false, variables: {} };
   elements.message.textContent = '並べ替えが完了しました！';
+  elements.variableMessage.textContent = 'すべての要素が整列済みです。';
   render();
 }
 
@@ -170,8 +334,9 @@ function reset() {
   stepIndex = 0;
   comparisonCount = 0;
   swapCount = 0;
-  visualState = { active: [], sorted: [], swapping: false };
+  visualState = { active: [], sorted: [], swapping: false, variables: {} };
   elements.message.textContent = '「実行」を押すと、並べ替えを開始します。';
+  elements.variableMessage.textContent = '添字は各要素の下に表示されます。';
   updateStats();
   render();
 }
@@ -234,9 +399,11 @@ elements.arrayInput.addEventListener('keydown', event => {
   if (event.key === 'Enter') applyCustomArray();
 });
 elements.directions.forEach(input => input.addEventListener('change', () => {
-  elements.directionHint.textContent = input.value === 'ltr'
-    ? '最大値を右端へ移動します'
-    : '最小値を左端へ移動します';
+  reset();
+}));
+elements.displayModes.forEach(input => input.addEventListener('change', render));
+elements.algorithms.forEach(input => input.addEventListener('change', () => {
+  updateAlgorithmDescription();
   reset();
 }));
 
@@ -247,4 +414,5 @@ elements.speed.addEventListener('input', () => {
 });
 
 paintRange(elements.speed);
+updateAlgorithmDescription();
 newArray();
