@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="バブルソートの比較と交換を視覚的に学べるWebアプリ" />
+    <title>Bubble Lab — バブルソート可視化</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <main>
+        <section class="workspace" aria-label="バブルソート可視化ツール">
+          <div class="visual-panel">
+            <div class="panel-topline">
+              <h1>バブルソート</h1>
+              <div class="legend" aria-label="色の説明">
+                <span><i class="dot comparing"></i>比較中</span>
+                <span><i class="dot sorted"></i>確定済み</span>
+              </div>
+            </div>
+
+            <div class="chart-wrap">
+              <div class="bars" id="bars" role="img" aria-label="並べ替える数値の棒グラフ"></div>
+            </div>
+
+            <div class="process-card" aria-live="polite">
+              <div>
+                <p class="process-message" id="processMessage">「実行」を押すと、並べ替えを開始します。</p>
+              </div>
+            </div>
+
+            <div class="controls">
+              <button class="icon-button" id="resetButton" type="button" title="リセット" aria-label="リセット">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.9 7.5A8 8 0 1 1 4 14m.9-6.5V3m0 4.5h4.5"/></svg>
+              </button>
+              <button class="play-button" id="playButton" type="button">
+                <span id="playLabel">実行 ▶</span>
+              </button>
+              <button class="step-button" id="stepButton" type="button">1ステップ <span>→</span></button>
+            </div>
+          </div>
+
+          <aside class="settings-panel">
+            <div class="setting-group array-input-group">
+              <label class="array-input-label" for="arrayInput">配列を入力</label>
+              <div class="array-input-row">
+                <input id="arrayInput" type="text" inputmode="numeric" autocomplete="off" placeholder="例：72, 46, 39, 64, 19" aria-describedby="arrayInputHint arrayInputError" />
+                <button id="applyArrayButton" type="button">反映</button>
+              </div>
+              <p class="array-input-hint" id="arrayInputHint">5〜14個の整数をカンマで区切って入力</p>
+              <p class="array-input-error" id="arrayInputError" role="alert"></p>
+            </div>
+
+            <fieldset class="setting-group direction-group">
+              <legend>走査方向</legend>
+              <div class="direction-options">
+                <label><input type="radio" name="direction" value="ltr" checked /><span>左 → 右</span></label>
+                <label><input type="radio" name="direction" value="rtl" /><span>右 → 左</span></label>
+              </div>
+              <p id="directionHint">最大値を右端へ移動します</p>
+            </fieldset>
+
+            <div class="setting-group">
+              <div class="setting-heading"><label for="speedRange">アニメーション速度</label><output id="speedOutput">ふつう</output></div>
+              <input id="speedRange" type="range" min="1" max="5" value="3" />
+              <div class="range-labels"><span>ゆっくり</span><span>はやい</span></div>
+            </div>
+
+            <div class="stats" aria-label="実行統計">
+              <div><span>比較回数</span><strong id="comparisonCount">0</strong></div>
+              <div><span>交換回数</span><strong id="swapCount">0</strong></div>
+            </div>
+
+            <div class="tip-card">
+              <span class="tip-icon">i</span>
+              <div><b>バブルソートとは？</b><p>隣り合う2つの値を順に比較し、左の値が大きければ入れ替える整列方法です。左から走査すると最大値が右端へ、右から走査すると最小値が左端へ確定します。この処理を交換がなくなるまで繰り返します。</p></div>
+            </div>
+          </aside>
+        </section>
+
+      </main>
+
+    </div>
+    <script src="app.js"></script>
+  </body>
+</html>
