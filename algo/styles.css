@@ -73,7 +73,7 @@ main {
 .bar-item.sorted.comparing .bar-value { color: var(--ink); }
 .bar-item.sorted.swapping .bar { border-color: var(--orange-dark); background: var(--orange); transform: translateY(-5px); }
 .bar-item.sorted.swapping .bar-value { color: #fff; }
-.bars.view-bars { height: 280px; flex-wrap: nowrap; align-items: flex-end; border-bottom: 1px solid #dadbd5; }
+.bars.view-bars { height: 280px; flex-wrap: nowrap; align-items: flex-end; }
 .view-bars .bar-item { height: 100%; max-width: 64px; min-width: 14px; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; }
 .view-bars .bar { height: var(--bar-height); flex-shrink: 0; aspect-ratio: auto; border: 0; border-radius: 3px 3px 0 0; background: #cfd9e2; box-shadow: none; position: relative; }
 .view-bars .bar-value { position: absolute; top: -17px; left: 50%; transform: translateX(-50%); color: var(--ink); font-size: 10px; }
