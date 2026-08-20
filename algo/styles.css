@@ -58,20 +58,20 @@ main {
 .bars { width: 100%; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: clamp(8px, 1.4vw, 14px); }
 .bars.view-cards { row-gap: 36px; }
 .bar-item { flex: 1 1 42px; max-width: 72px; min-width: 38px; position: relative; }
-.bar { width: 100%; aspect-ratio: 1; display: grid; place-items: center; border: 1px solid #bcc8d2; border-radius: 8px; background: #fff; box-shadow: 0 2px 6px rgba(40, 55, 68, .1); position: relative; transition: background .2s, border-color .2s, color .2s, transform .2s, box-shadow .2s; }
+.bar { width: 100%; aspect-ratio: 1; display: grid; place-items: center; border: 1px solid #bcc8d2; border-radius: 8px; background: #fff; position: relative; transition: background .2s, border-color .2s, color .2s, transform .2s; }
 .bar-value { font: 500 clamp(11px, 1.4vw, 15px)/1 "DM Mono", monospace; transition: color .2s; }
 .index-label { display: block; margin-top: 7px; color: #8a9299; font: 500 9px/1 "DM Mono", monospace; text-align: center; }
 .variable-badges { min-height: 17px; display: flex; justify-content: center; gap: 3px; position: absolute; top: -22px; left: 50%; transform: translateX(-50%); white-space: nowrap; }
 .variable-badges:empty { display: none; }
-.variable-badges code { min-width: 17px; height: 17px; padding: 0 4px; border-radius: 3px; background: #34495b; color: #fff; font: 600 9px/17px "DM Mono", monospace; text-align: center; box-shadow: 0 1px 3px rgba(0, 0, 0, .18); }
-.bar-item.comparing .bar { border-color: #dda035; background: #fff3d4; transform: translateY(-5px); box-shadow: 0 5px 12px rgba(221, 160, 53, .2); }
-.bar-item.swapping .bar { border-color: var(--orange-dark); background: var(--orange); color: #fff; transform: translateY(-5px); box-shadow: 0 5px 12px rgba(166, 64, 32, .22); }
+.variable-badges code { min-width: 17px; height: 17px; padding: 0 4px; border-radius: 3px; background: #34495b; color: #fff; font: 600 9px/17px "DM Mono", monospace; text-align: center; }
+.bar-item.comparing .bar { border-color: #dda035; background: #fff3d4; transform: translateY(-5px); }
+.bar-item.swapping .bar { border-color: var(--orange-dark); background: var(--orange); color: #fff; transform: translateY(-5px); }
 .bar-item.sorted .bar { border-color: #5d9f75; background: #e2f2e7; }
 .bar-item.sorted .bar-value { color: #326c52; }
 .bar-item.swapping .bar-value { color: #fff; }
-.bar-item.sorted.comparing .bar { border-color: #dda035; background: #fff3d4; transform: translateY(-5px); box-shadow: 0 5px 12px rgba(221, 160, 53, .2); }
+.bar-item.sorted.comparing .bar { border-color: #dda035; background: #fff3d4; transform: translateY(-5px); }
 .bar-item.sorted.comparing .bar-value { color: var(--ink); }
-.bar-item.sorted.swapping .bar { border-color: var(--orange-dark); background: var(--orange); transform: translateY(-5px); box-shadow: 0 5px 12px rgba(166, 64, 32, .22); }
+.bar-item.sorted.swapping .bar { border-color: var(--orange-dark); background: var(--orange); transform: translateY(-5px); }
 .bar-item.sorted.swapping .bar-value { color: #fff; }
 .bars.view-bars { height: 280px; flex-wrap: nowrap; align-items: flex-end; border-bottom: 1px solid #dadbd5; }
 .view-bars .bar-item { height: 100%; max-width: 64px; min-width: 14px; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; }
@@ -95,7 +95,7 @@ main {
 .icon-button { width: 43px; padding: 11px; }.icon-button svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
 .play-button { width: 100px; height: 38px !important; background: #bd4d27 !important; color: white !important; border: 1px solid #a7a7a7 !important; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; box-shadow: inset 0 0 0 1px rgba(255,255,255,.3) !important; }
 .play-button:hover { background: var(--orange-dark) !important; }
-.step-button { padding: 0 17px; font-size: 11px; }.step-button span { color: var(--orange); margin-left: 8px; }
+.step-button { padding: 0 17px; font-size: 11px; }.step-button span { margin-left: 8px; }
 .controls button:disabled { opacity: .45; pointer-events: none; }
 
 .setting-group { margin-bottom: 38px; }
