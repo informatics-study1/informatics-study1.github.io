@@ -64,7 +64,7 @@ function buildBubbleSteps(source, direction) {
       let changed = false;
       const sorted = Array.from({ length: work.length - end - 1 }, (_, i) => end + 1 + i);
       for (let i = 0; i < end; i++) {
-        const variables = { i: end, j: i, 'j+1': i + 1 };
+        const variables = { i: end, j: i };
         result.push({ type: 'compare', indices: [i, i + 1], values: [...work], sorted, variables });
         if (work[i] > work[i + 1]) {
           [work[i], work[i + 1]] = [work[i + 1], work[i]];
@@ -131,7 +131,7 @@ function buildInsertionSteps(source, direction) {
       const sorted = Array.from({ length: work.length - start - 1 }, (_, i) => start + 1 + i);
       let index = start;
       while (index < work.length - 1) {
-        const variables = { i: start, j: index, 'j+1': index + 1 };
+        const variables = { i: start, j: index };
         result.push({ type: 'compare', indices: [index, index + 1], values: [...work], sorted, variables });
         if (work[index] <= work[index + 1]) break;
         [work[index], work[index + 1]] = [work[index + 1], work[index]];
