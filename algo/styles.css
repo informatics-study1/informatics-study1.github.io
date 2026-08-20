@@ -64,12 +64,12 @@ main {
 .variable-badges { min-height: 17px; display: flex; justify-content: center; gap: 3px; position: absolute; top: -22px; left: 50%; transform: translateX(-50%); white-space: nowrap; }
 .variable-badges:empty { display: none; }
 .variable-badges code { min-width: 17px; height: 17px; padding: 0 4px; border-radius: 3px; background: #34495b; color: #fff; font: 600 9px/17px "DM Mono", monospace; text-align: center; }
-.bar-item.comparing .bar { border-color: #dda035; background: #fff3d4; transform: translateY(-5px); }
+.bar-item.comparing .bar { border-color: #dda035; background: #fff3d4; transform: translateY(-15px); }
 .bar-item.swapping .bar { border-color: var(--orange-dark); background: var(--orange); color: #fff; transform: translateY(-5px); }
 .bar-item.sorted .bar { border-color: #5d9f75; background: #e2f2e7; }
 .bar-item.sorted .bar-value { color: #326c52; }
 .bar-item.swapping .bar-value { color: #fff; }
-.bar-item.sorted.comparing .bar { border-color: #dda035; background: #fff3d4; transform: translateY(-5px); }
+.bar-item.sorted.comparing .bar { border-color: #dda035; background: #fff3d4; transform: translateY(-15px); }
 .bar-item.sorted.comparing .bar-value { color: var(--ink); }
 .bar-item.sorted.swapping .bar { border-color: var(--orange-dark); background: var(--orange); transform: translateY(-5px); }
 .bar-item.sorted.swapping .bar-value { color: #fff; }
