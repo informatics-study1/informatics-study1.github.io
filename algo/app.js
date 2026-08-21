@@ -19,6 +19,8 @@ const elements = {
   swaps: document.querySelector('#swapCount'),
   message: document.querySelector('#processMessage'),
   variableMessage: document.querySelector('#variableMessage'),
+  codePanel: document.querySelector('#codePanel'),
+  pythonCode: document.querySelector('#pythonCode'),
 };
 
 let values = [];
@@ -41,19 +43,19 @@ function buildBubbleSteps(source, direction) {
   const work = [...source];
   const result = [];
   if (direction === 'rtl') {
-    for (let start = 0; start < work.length - 1; start++) {
+    for (let i = 0; i < work.length - 1; i++) {
       let changed = false;
-      const sorted = Array.from({ length: start }, (_, i) => i);
-      for (let i = work.length - 1; i > start; i--) {
-        const variables = { i: start, j: i, 'j-1': i - 1 };
-        result.push({ type: 'compare', indices: [i - 1, i], values: [...work], sorted, variables });
-        if (work[i - 1] > work[i]) {
-          [work[i - 1], work[i]] = [work[i], work[i - 1]];
+      const sorted = Array.from({ length: i }, (_, index) => index);
+      for (let j = work.length - 2; j >= i; j--) {
+        const variables = { i, j };
+        result.push({ type: 'compare', indices: [j, j + 1], values: [...work], sorted, variables, codeLines: [6] });
+        if (work[j] > work[j + 1]) {
+          [work[j], work[j + 1]] = [work[j + 1], work[j]];
           changed = true;
-          result.push({ type: 'swap', indices: [i - 1, i], values: [...work], sorted, variables });
+          result.push({ type: 'swap', indices: [j, j + 1], values: [...work], sorted, variables, codeLines: [7, 8, 9] });
         }
       }
-      result.push({ type: 'settle', indices: [], values: [...work], sorted: [...sorted, start], settledIndex: start, variables: { i: start } });
+      result.push({ type: 'settle', indices: [], values: [...work], sorted: [...sorted, i], settledIndex: i, variables: { i }, codeLines: [4] });
       if (!changed) {
         result.push({ type: 'done', indices: [], values: [...work], sorted: work.map((_, i) => i) });
         return result;
@@ -65,14 +67,14 @@ function buildBubbleSteps(source, direction) {
       const sorted = Array.from({ length: work.length - end - 1 }, (_, i) => end + 1 + i);
       for (let i = 0; i < end; i++) {
         const variables = { i: end, j: i };
-        result.push({ type: 'compare', indices: [i, i + 1], values: [...work], sorted, variables });
+        result.push({ type: 'compare', indices: [i, i + 1], values: [...work], sorted, variables, codeLines: [6] });
         if (work[i] > work[i + 1]) {
           [work[i], work[i + 1]] = [work[i + 1], work[i]];
           changed = true;
-          result.push({ type: 'swap', indices: [i, i + 1], values: [...work], sorted, variables });
+          result.push({ type: 'swap', indices: [i, i + 1], values: [...work], sorted, variables, codeLines: [7, 8, 9] });
         }
       }
-      result.push({ type: 'settle', indices: [], values: [...work], sorted: [end, ...sorted], settledIndex: end, variables: { i: end } });
+      result.push({ type: 'settle', indices: [], values: [...work], sorted: [end, ...sorted], settledIndex: end, variables: { i: end }, codeLines: [4] });
       if (!changed) {
         result.push({ type: 'done', indices: [], values: [...work], sorted: work.map((_, i) => i) });
         return result;
@@ -92,28 +94,28 @@ function buildSelectionSteps(source, direction) {
       let selected = end;
       const sorted = Array.from({ length: work.length - end - 1 }, (_, i) => end + 1 + i);
       for (let i = end - 1; i >= 0; i--) {
-        result.push({ type: 'compare', indices: [selected, i], values: [...work], sorted, variables: { i: end, j: i, max: selected } });
+        result.push({ type: 'compare', indices: [selected, i], values: [...work], sorted, variables: { i: end, j: i, max_index: selected }, codeLines: [7] });
         if (work[i] > work[selected]) selected = i;
       }
       if (selected !== end) {
         [work[selected], work[end]] = [work[end], work[selected]];
-        result.push({ type: 'swap', indices: [selected, end], values: [...work], sorted, variables: { i: end, max: selected } });
+        result.push({ type: 'swap', indices: [selected, end], values: [...work], sorted, variables: { i: end, max_index: selected }, codeLines: [9, 10, 11] });
       }
-      result.push({ type: 'settle', indices: [], values: [...work], sorted: [end, ...sorted], settledIndex: end, variables: { i: end } });
+      result.push({ type: 'settle', indices: [], values: [...work], sorted: [end, ...sorted], settledIndex: end, variables: { i: end }, codeLines: [4] });
     }
   } else {
     for (let start = 0; start < work.length - 1; start++) {
       let selected = start;
       const sorted = Array.from({ length: start }, (_, i) => i);
       for (let i = start + 1; i < work.length; i++) {
-        result.push({ type: 'compare', indices: [selected, i], values: [...work], sorted, variables: { i: start, j: i, min: selected } });
+        result.push({ type: 'compare', indices: [selected, i], values: [...work], sorted, variables: { i: start, j: i, min_index: selected }, codeLines: [7] });
         if (work[i] < work[selected]) selected = i;
       }
       if (selected !== start) {
         [work[selected], work[start]] = [work[start], work[selected]];
-        result.push({ type: 'swap', indices: [selected, start], values: [...work], sorted, variables: { i: start, min: selected } });
+        result.push({ type: 'swap', indices: [selected, start], values: [...work], sorted, variables: { i: start, min_index: selected }, codeLines: [9, 10, 11] });
       }
-      result.push({ type: 'settle', indices: [], values: [...work], sorted: [...sorted, start], settledIndex: start, variables: { i: start } });
+      result.push({ type: 'settle', indices: [], values: [...work], sorted: [...sorted, start], settledIndex: start, variables: { i: start }, codeLines: [4] });
     }
   }
 
@@ -132,10 +134,10 @@ function buildInsertionSteps(source, direction) {
       let index = start;
       while (index < work.length - 1) {
         const variables = { i: start, j: index };
-        result.push({ type: 'compare', indices: [index, index + 1], values: [...work], sorted, variables });
+        result.push({ type: 'compare', indices: [index, index + 1], values: [...work], sorted, variables, codeLines: [6] });
         if (work[index] <= work[index + 1]) break;
         [work[index], work[index + 1]] = [work[index + 1], work[index]];
-        result.push({ type: 'swap', indices: [index, index + 1], values: [...work], sorted, variables });
+        result.push({ type: 'swap', indices: [index, index + 1], values: [...work], sorted, variables, codeLines: [7, 8, 9] });
         index++;
       }
       result.push({
@@ -145,6 +147,7 @@ function buildInsertionSteps(source, direction) {
         sorted: [start, ...sorted],
         settledIndex: index,
         variables: { i: start, j: index },
+        codeLines: [4],
         message: `${insertedValue} を右側の整列済み部分に挿入しました。`,
       });
     }
@@ -155,10 +158,10 @@ function buildInsertionSteps(source, direction) {
       let index = end;
       while (index > 0) {
         const variables = { i: end, j: index, 'j-1': index - 1 };
-        result.push({ type: 'compare', indices: [index - 1, index], values: [...work], sorted, variables });
+        result.push({ type: 'compare', indices: [index - 1, index], values: [...work], sorted, variables, codeLines: [6] });
         if (work[index - 1] <= work[index]) break;
         [work[index - 1], work[index]] = [work[index], work[index - 1]];
-        result.push({ type: 'swap', indices: [index - 1, index], values: [...work], sorted, variables });
+        result.push({ type: 'swap', indices: [index - 1, index], values: [...work], sorted, variables, codeLines: [7, 8, 9] });
         index--;
       }
       result.push({
@@ -168,6 +171,7 @@ function buildInsertionSteps(source, direction) {
         sorted: [...sorted, end],
         settledIndex: index,
         variables: { i: end, j: index },
+        codeLines: [4],
         message: `${insertedValue} を左側の整列済み部分に挿入しました。`,
       });
     }
@@ -222,7 +226,74 @@ function selectedDisplayMode() {
   return document.querySelector('input[name="displayMode"]:checked').value;
 }
 
+function renderPythonCode(activeLines = []) {
+  const algorithm = selectedAlgorithm();
+  const rightToLeft = selectedDirection() === 'rtl';
+  const source = originalValues.length ? originalValues : values;
+  const commonStart = [
+    `Data = [${source.join(', ')}]`,
+    'n = len(Data)',
+    'print("整列前", Data)',
+  ];
+  let lines;
+
+  if (algorithm === 'selection') {
+    const target = rightToLeft ? 'max_index' : 'min_index';
+    lines = [
+      ...commonStart,
+      rightToLeft ? 'for i in range(n - 1, 0, -1):' : 'for i in range(0, n - 1, 1):',
+      `    ${target} = i`,
+      rightToLeft ? '    for j in range(i - 1, -1, -1):' : '    for j in range(i + 1, n, 1):',
+      `        if Data[j] ${rightToLeft ? '>' : '<'} Data[${target}]:`,
+      `            ${target} = j`,
+      `    tmp = Data[${target}]`,
+      `    Data[${target}] = Data[i]`,
+      `    Data[i] = tmp`,
+      'print("整列後", Data)',
+    ];
+  } else if (algorithm === 'insertion') {
+    lines = [
+      ...commonStart,
+      rightToLeft ? 'for i in range(n - 2, -1, -1):' : 'for i in range(1, n, 1):',
+      '    j = i',
+      rightToLeft ? '    while j < n - 1 and Data[j] > Data[j + 1]:' : '    while j > 0 and Data[j - 1] > Data[j]:',
+      rightToLeft ? '        tmp = Data[j]' : '        tmp = Data[j - 1]',
+      rightToLeft ? '        Data[j] = Data[j + 1]' : '        Data[j - 1] = Data[j]',
+      rightToLeft ? '        Data[j + 1] = tmp' : '        Data[j] = tmp',
+      rightToLeft ? '        j += 1' : '        j = j - 1',
+      'print("整列後", Data)',
+    ];
+  } else {
+    lines = [
+      ...commonStart,
+      rightToLeft ? 'for i in range(0, n - 1, 1):' : 'for i in range(n - 1, 0, -1):',
+      rightToLeft ? '    for j in range(n - 2, i - 1, -1):' : '    for j in range(0, i, 1):',
+      '        if Data[j] > Data[j + 1]:',
+      '            tmp = Data[j]',
+      '            Data[j] = Data[j + 1]',
+      '            Data[j + 1] = tmp',
+      'print("整列後", Data)',
+    ];
+  }
+
+  const highlightedLines = activeLines.includes(10)
+    && visualState.active.length === 0
+    && visualState.sorted.length === values.length
+    ? [lines.length]
+    : activeLines;
+
+  elements.pythonCode.replaceChildren(...lines.map((text, index) => {
+    const lineNumber = index + 1;
+    const line = document.createElement('li');
+    line.dataset.line = lineNumber;
+    line.textContent = text;
+    line.classList.toggle('active', highlightedLines.includes(lineNumber));
+    return line;
+  }));
+}
+
 function render() {
+  renderPythonCode(visualState.codeLines || []);
   const displayMode = selectedDisplayMode();
   const max = Math.max(...values);
   elements.bars.classList.toggle('view-cards', displayMode === 'cards');
@@ -271,6 +342,7 @@ function applyNextStep() {
     sorted: step.sorted,
     swapping: step.type === 'swap',
     variables: step.variables || {},
+    codeLines: step.codeLines || [],
   };
   const variableEntries = Object.entries(visualState.variables);
   elements.variableMessage.textContent = variableEntries.length
@@ -321,7 +393,7 @@ function pause() {
 
 function finish() {
   pause();
-  visualState = { active: [], sorted: values.map((_, i) => i), swapping: false, variables: {} };
+  visualState = { active: [], sorted: values.map((_, i) => i), swapping: false, variables: {}, codeLines: [10] };
   elements.message.textContent = '並べ替えが完了しました！';
   elements.variableMessage.textContent = 'すべての要素が整列済みです。';
   render();
