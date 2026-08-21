@@ -17,10 +17,14 @@ const elements = {
   speedOutput: document.querySelector('#speedOutput'),
   comparison: document.querySelector('#comparisonCount'),
   swaps: document.querySelector('#swapCount'),
+  secondaryStatLabel: document.querySelector('#secondaryStatLabel'),
   message: document.querySelector('#processMessage'),
   variableMessage: document.querySelector('#variableMessage'),
   codePanel: document.querySelector('#codePanel'),
   pythonCode: document.querySelector('#pythonCode'),
+  searchTargetGroup: document.querySelector('#searchTargetGroup'),
+  searchTargetInput: document.querySelector('#searchTargetInput'),
+  sortedLegendLabel: document.querySelector('#sortedLegendLabel'),
 };
 
 let values = [];
@@ -29,6 +33,7 @@ let steps = [];
 let stepIndex = 0;
 let comparisonCount = 0;
 let swapCount = 0;
+let searchResult = null;
 let timer = null;
 let visualState = { active: [], sorted: [], swapping: false, variables: {} };
 
@@ -181,12 +186,67 @@ function buildInsertionSteps(source, direction) {
   return result;
 }
 
+function buildLinearSearchSteps(source, direction, target) {
+  const result = [];
+  const indices = direction === 'rtl'
+    ? Array.from({ length: source.length }, (_, index) => source.length - 1 - index)
+    : source.map((_, index) => index);
+  const checked = [];
+
+  for (const i of indices) {
+    const variables = { i };
+    result.push({ type: 'compare', indices: [i], values: [...source], sorted: [...checked], variables, codeLines: [6], target });
+    if (source[i] === target) {
+      result.push({ type: 'found', indices: [i], values: [...source], sorted: [...checked, i], variables, codeLines: [7, 8], target });
+      return result;
+    }
+    checked.push(i);
+  }
+
+  result.push({ type: 'not-found', indices: [], values: [...source], sorted: [...checked], variables: {}, codeLines: [9], target });
+  return result;
+}
+
+function buildBinarySearchSteps(source, direction, target) {
+  const result = [];
+  const checked = new Set();
+  let low = 0;
+  let high = source.length - 1;
+
+  while (low <= high) {
+    const mid = Math.floor((low + high) / 2);
+    const variables = { low, mid, high };
+    result.push({ type: 'compare', indices: [mid], values: [...source], sorted: [...checked], variables, codeLines: [7, 8, 9], target });
+
+    if (source[mid] === target) {
+      result.push({ type: 'found', indices: [mid], values: [...source], sorted: [...checked, mid], variables, codeLines: [10, 11], target });
+      return result;
+    }
+
+    const moveLow = direction === 'rtl' ? source[mid] > target : source[mid] < target;
+    if (moveLow) {
+      for (let index = low; index <= mid; index++) checked.add(index);
+      low = mid + 1;
+      result.push({ type: 'narrow', indices: [], values: [...source], sorted: [...checked], variables: low <= high ? { low, high } : {}, codeLines: [12, 13], target });
+    } else {
+      for (let index = mid; index <= high; index++) checked.add(index);
+      high = mid - 1;
+      result.push({ type: 'narrow', indices: [], values: [...source], sorted: [...checked], variables: low <= high ? { low, high } : {}, codeLines: [14, 15], target });
+    }
+  }
+
+  result.push({ type: 'not-found', indices: [], values: [...source], sorted: [...checked], variables: {}, codeLines: [16], target });
+  return result;
+}
+
 function selectedAlgorithm() {
   return document.querySelector('input[name="algorithm"]:checked').value;
 }
 
 function buildSteps(source, direction) {
   const algorithm = selectedAlgorithm();
+  if (algorithm === 'linear') return buildLinearSearchSteps(source, direction, Number(elements.searchTargetInput.value));
+  if (algorithm === 'binary') return buildBinarySearchSteps(source, direction, Number(elements.searchTargetInput.value));
   if (algorithm === 'selection') return buildSelectionSteps(source, direction);
   if (algorithm === 'insertion') return buildInsertionSteps(source, direction);
   return buildBubbleSteps(source, direction);
@@ -210,12 +270,26 @@ function updateAlgorithmDescription() {
       name: '挿入ソート',
       text: '値を1つずつ取り出し、すでに整列した範囲の適切な位置へ挿入する整列方法です。左から走査すると左側へ、右から走査すると右側へ整列済みの範囲を広げます。',
     },
+    linear: {
+      englishName: 'Linear Search',
+      name: '線形探索',
+      text: '配列の先頭または末尾から値を1つずつ調べ、目的の値と一致する要素を探す方法です。目的の値が見つかった時点で探索を終了します。',
+    },
+    binary: {
+      englishName: 'Binary Search',
+      name: '二分探索',
+      text: '整列済みの配列の中央を調べ、目的の値がある可能性のない半分を除外しながら探索する方法です。探索範囲がステップごとに約半分になります。',
+    },
   };
   const description = descriptions[algorithm];
   elements.algorithmTitle.textContent = description.name;
   elements.algorithmTipTitle.textContent = `${description.name}とは？`;
   elements.algorithmTipText.textContent = description.text;
-  document.title = `${description.englishName} Lab — ${description.name}可視化`;
+  const isSearch = algorithm === 'linear' || algorithm === 'binary';
+  elements.searchTargetGroup.hidden = !isSearch;
+  elements.secondaryStatLabel.textContent = isSearch ? '発見位置' : '交換回数';
+  elements.sortedLegendLabel.textContent = isSearch ? '探索対象外' : '整列済み';
+  document.title = 'アルゴリズム図鑑';
 }
 
 function selectedDirection() {
@@ -226,10 +300,35 @@ function selectedDisplayMode() {
   return document.querySelector('input[name="displayMode"]:checked').value;
 }
 
+function appendHighlightedPython(container, source) {
+  const tokenPattern = /("(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|#.*$|\b\d+\b|\b(?:for|in|if|while|and|or|not|else|elif|break|continue)\b|\b(?:print|len|range)\b|(?:==|!=|<=|>=|\/\/|\+|-|\*|\/|%|=|<|>))/g;
+  let cursor = 0;
+
+  for (const match of source.matchAll(tokenPattern)) {
+    if (match.index > cursor) container.append(document.createTextNode(source.slice(cursor, match.index)));
+    const token = match[0];
+    const span = document.createElement('span');
+    if (token.startsWith('#')) span.className = 'token-comment';
+    else if (token.startsWith('"') || token.startsWith("'")) span.className = 'token-string';
+    else if (/^\d+$/.test(token)) span.className = 'token-number';
+    else if (/^(?:for|in|if|while|and|or|not|else|elif|break|continue)$/.test(token)) span.className = 'token-keyword';
+    else if (/^(?:print|len|range)$/.test(token)) span.className = 'token-function';
+    else span.className = 'token-operator';
+    span.textContent = token;
+    container.append(span);
+    cursor = match.index + token.length;
+  }
+
+  if (cursor < source.length) container.append(document.createTextNode(source.slice(cursor)));
+}
+
 function renderPythonCode(activeLines = []) {
   const algorithm = selectedAlgorithm();
   const rightToLeft = selectedDirection() === 'rtl';
-  const source = originalValues.length ? originalValues : values;
+  const baseSource = originalValues.length ? originalValues : values;
+  const source = algorithm === 'binary'
+    ? [...baseSource].sort((a, b) => rightToLeft ? b - a : a - b)
+    : baseSource;
   const commonStart = [
     `Data = [${source.join(', ')}]`,
     'n = len(Data)',
@@ -237,7 +336,40 @@ function renderPythonCode(activeLines = []) {
   ];
   let lines;
 
-  if (algorithm === 'selection') {
+  if (algorithm === 'binary') {
+    const target = Number(elements.searchTargetInput.value);
+    lines = [
+      `Data = [${source.join(', ')}]`,
+      'n = len(Data)',
+      `target = ${target}`,
+      'low = 0',
+      'high = n - 1',
+      'found = -1',
+      'while low <= high:',
+      '    mid = (low + high) // 2',
+      '    if Data[mid] == target:',
+      '        found = mid',
+      '        break',
+      `    if Data[mid] ${rightToLeft ? '>' : '<'} target:`,
+      '        low = mid + 1',
+      '    else:',
+      '        high = mid - 1',
+      'print(found)',
+    ];
+  } else if (algorithm === 'linear') {
+    const target = Number(elements.searchTargetInput.value);
+    lines = [
+      `Data = [${source.join(', ')}]`,
+      'n = len(Data)',
+      `target = ${target}`,
+      'found = -1',
+      rightToLeft ? 'for i in range(n - 1, -1, -1):' : 'for i in range(0, n, 1):',
+      '    if Data[i] == target:',
+      '        found = i',
+      '        break',
+      'print(found)',
+    ];
+  } else if (algorithm === 'selection') {
     const target = rightToLeft ? 'max_index' : 'min_index';
     lines = [
       ...commonStart,
@@ -286,7 +418,7 @@ function renderPythonCode(activeLines = []) {
     const lineNumber = index + 1;
     const line = document.createElement('li');
     line.dataset.line = lineNumber;
-    line.textContent = text;
+    appendHighlightedPython(line, text);
     line.classList.toggle('active', highlightedLines.includes(lineNumber));
     return line;
   }));
@@ -302,7 +434,10 @@ function render() {
     const item = document.createElement('div');
     item.className = 'bar-item';
     if (visualState.active.includes(index)) item.classList.add(visualState.swapping ? 'swapping' : 'comparing');
-    if (visualState.sorted.includes(index)) item.classList.add('sorted');
+    if (visualState.sorted.includes(index)) {
+      const algorithm = selectedAlgorithm();
+      item.classList.add(algorithm === 'linear' || algorithm === 'binary' ? 'excluded' : 'sorted');
+    }
     const label = document.createElement('span');
     label.className = 'bar-value';
     label.textContent = value;
@@ -330,7 +465,9 @@ function render() {
 
 function updateStats() {
   elements.comparison.textContent = comparisonCount;
-  elements.swaps.textContent = swapCount;
+  const algorithm = selectedAlgorithm();
+  const isSearch = algorithm === 'linear' || algorithm === 'binary';
+  elements.swaps.textContent = isSearch ? (searchResult ?? '—') : swapCount;
 }
 
 function applyNextStep() {
@@ -352,13 +489,28 @@ function applyNextStep() {
   if (step.type === 'compare') {
     comparisonCount++;
     const [a, b] = step.indices;
-    elements.message.textContent = `${values[a]} と ${values[b]} を比較します。`;
+    const algorithm = selectedAlgorithm();
+    elements.message.textContent = algorithm === 'linear' || algorithm === 'binary'
+      ? `${values[a]} と探索値 ${step.target} を比較します。`
+      : `${values[a]} と ${values[b]} を比較します。`;
   } else if (step.type === 'swap') {
     swapCount++;
     const [a, b] = step.indices;
     elements.message.textContent = `順番を交換：${values[a]} ←→ ${values[b]}`;
   } else if (step.type === 'settle') {
     elements.message.textContent = step.message || `${values[step.settledIndex]} の位置が確定しました。`;
+  } else if (step.type === 'narrow') {
+    elements.message.textContent = visualState.variables.low === undefined
+      ? '探索範囲がなくなりました。'
+      : `探索範囲を [${visualState.variables.low}] から [${visualState.variables.high}] に絞ります。`;
+  } else if (step.type === 'found') {
+    searchResult = step.indices[0];
+    elements.message.textContent = `探索値 ${step.target} が添字 [${searchResult}] で見つかりました。`;
+    pause();
+  } else if (step.type === 'not-found') {
+    searchResult = 'なし';
+    elements.message.textContent = `探索値 ${step.target} は配列内に見つかりませんでした。`;
+    pause();
   } else {
     finish();
     return;
@@ -401,14 +553,23 @@ function finish() {
 
 function reset() {
   pause();
-  values = [...originalValues];
+  const algorithm = selectedAlgorithm();
+  values = algorithm === 'binary'
+    ? [...originalValues].sort((a, b) => selectedDirection() === 'rtl' ? b - a : a - b)
+    : [...originalValues];
   steps = buildSteps(values, selectedDirection());
   stepIndex = 0;
   comparisonCount = 0;
   swapCount = 0;
+  searchResult = null;
   visualState = { active: [], sorted: [], swapping: false, variables: {} };
-  elements.message.textContent = '「実行」を押すと、並べ替えを開始します。';
-  elements.variableMessage.textContent = '添字は各要素の下に表示されます。';
+  const isSearch = algorithm === 'linear' || algorithm === 'binary';
+  elements.message.textContent = isSearch
+    ? '「実行」を押すと、探索を開始します。'
+    : '「実行」を押すと、並べ替えを開始します。';
+  elements.variableMessage.textContent = isSearch
+    ? (algorithm === 'binary' ? '変数 low・mid・high の位置を表示します。' : '変数 i の位置を各要素の上に表示します。')
+    : '添字は各要素の下に表示されます。';
   updateStats();
   render();
 }
@@ -469,6 +630,11 @@ elements.applyArray.addEventListener('click', applyCustomArray);
 elements.arrayInput.addEventListener('input', clearArrayError);
 elements.arrayInput.addEventListener('keydown', event => {
   if (event.key === 'Enter') applyCustomArray();
+});
+elements.searchTargetInput.addEventListener('change', () => {
+  const value = Math.min(99, Math.max(1, Number(elements.searchTargetInput.value) || 1));
+  elements.searchTargetInput.value = value;
+  reset();
 });
 elements.directions.forEach(input => input.addEventListener('change', () => {
   reset();
