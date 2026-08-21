@@ -17,7 +17,9 @@
           <div class="top-controls">
             <fieldset class="algorithm-switch" aria-label="アルゴリズムを選択">
               <div class="algorithm-options">
-                <label><input type="radio" name="algorithm" value="bubble" checked /><span>バブルソート</span></label>
+                <label><input type="radio" name="algorithm" value="linear" checked /><span>線形探索</span></label>
+                <label><input type="radio" name="algorithm" value="binary" /><span>二分探索</span></label>
+                <label><input type="radio" name="algorithm" value="bubble" /><span>バブルソート</span></label>
                 <label><input type="radio" name="algorithm" value="selection" /><span>選択ソート</span></label>
                 <label><input type="radio" name="algorithm" value="insertion" /><span>挿入ソート</span></label>
               </div>
@@ -36,7 +38,7 @@
               <h1 id="algorithmTitle">バブルソート</h1>
               <div class="legend" aria-label="色の説明">
                 <span><i class="dot comparing"></i>比較中</span>
-                <span><i class="dot sorted"></i>整列済み</span>
+                <span><i class="dot sorted"></i><span id="sortedLegendLabel">整列済み</span></span>
               </div>
             </div>
 
@@ -81,6 +83,11 @@
               <p class="array-input-error" id="arrayInputError" role="alert"></p>
             </div>
 
+            <div class="setting-group search-target-group" id="searchTargetGroup" hidden>
+              <label class="array-input-label" for="searchTargetInput">探索する値</label>
+              <input id="searchTargetInput" type="number" min="1" max="99" value="50" inputmode="numeric" />
+            </div>
+
             <fieldset class="setting-group direction-group">
               <legend>走査方向</legend>
               <div class="direction-options">
@@ -98,8 +105,8 @@
             </fieldset>
 
             <div class="stats" aria-label="実行統計">
-              <div><span>比較回数</span><strong id="comparisonCount">0</strong></div>
-              <div><span>交換回数</span><strong id="swapCount">0</strong></div>
+              <div><span id="comparisonLabel">比較回数</span><strong id="comparisonCount">0</strong></div>
+              <div><span id="secondaryStatLabel">交換回数</span><strong id="swapCount">0</strong></div>
             </div>
 
             <div class="tip-card">
